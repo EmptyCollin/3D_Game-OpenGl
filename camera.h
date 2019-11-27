@@ -57,7 +57,7 @@ namespace game {
 			float getAcceleration() { return acceleration; }
 			float getVelocity() { return velocity; }
 			void setAcceleration(float a) { acceleration = a; }
-
+			glm::mat4 GetCurrentViewMatrix(void);
         private:
             glm::vec3 position_; // Position of camera
             glm::quat orientation_; // Orientation of camera
@@ -75,7 +75,9 @@ namespace game {
 			float velocity=0;
 			float maxVelocity = 1.7;
 
-    }; // class Camera
+			
+
+	}; // class Camera
 
 } // namespace game
 

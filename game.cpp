@@ -20,7 +20,7 @@ const bool window_full_screen_g = false;
 // Viewport and camera settings
 float camera_near_clip_distance_g = 0.01;
 float camera_far_clip_distance_g = 1000.0;
-float camera_fov_g = 20.0; // Field-of-view of camera
+float camera_fov_g = 50.0; // Field-of-view of camera
 const glm::vec3 viewport_background_color_g(0.0, 0.0, 0.0);
 glm::vec3 camera_position_g(0.0, 0.0, 800.0);
 glm::vec3 camera_look_at_g(0.0, 0.0, 0.0);
@@ -126,9 +126,40 @@ void Game::SetupResources(void){
 	resman_.CreateCylinder("SimpleCylinderMesh_Canon", 0.09, 0.45);
 	resman_.CreateCylinder("SimpleCylinderMesh_Barrel", 0.05, 0.88);
 
+
+	// Create a torus
+	resman_.CreateTorus("TorusMesh");
+
+	// Use sphere to better analyze the environment map
+	//resman_.CreateSphere("TorusMesh");
+
+
+	
+	// Can also check reflections on a cube
+	std::string cube_filename = std::string(MATERIAL_DIRECTORY) + std::string("/dense_cube.aobj");
+	//resman_.LoadResource(Mesh, "TorusMesh", cube_filename.c_str());
+
+	// Create a cube for the skybox
+	resman_.CreateCube("CubeMesh");
+
+
     // Load material to be applied to asteroids
     std::string filename = std::string(MATERIAL_DIRECTORY) + std::string("/material");
     resman_.LoadResource(Material, "ObjectMaterial", filename.c_str());
+
+
+	// Load material to be applied to torus
+	filename = std::string(MATERIAL_DIRECTORY) + std::string("/envmap");
+	resman_.LoadResource(Material, "EnvMapMaterial", filename.c_str());
+
+	// Load cube map to be applied to skybox
+	filename = std::string(MATERIAL_DIRECTORY) + std::string("/island/island.tga");
+	resman_.LoadResource(CubeMap, "LakeCubeMap", filename.c_str());
+
+	// Load material to be applied to skybox
+	filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox");
+	resman_.LoadResource(Material, "SkyboxMaterial", filename.c_str());
+
 }
 
 
@@ -142,6 +173,20 @@ void Game::SetupScene(void){
     CreateAsteroidField();
 	CreateCanonInstance();
 	CreateShipInstance();
+
+
+	// Create an instance of the torus mesh
+	game::SceneNode *torus = CreateInstance("TorusInstance1", "TorusMesh", "EnvMapMaterial", "", "LakeCubeMap");
+	// Scale the instance
+	torus->Scale(glm::vec3(1.5, 1.5, 1.5));
+	torus->Translate(glm::vec3(0.0, 0.0, 780.0));
+	scene_.AddNode(torus);
+
+	// Create skybox
+	skybox_ = CreateInstance("CubeInstance1", "CubeMesh", "SkyboxMaterial", "LakeCubeMap");
+	skybox_->Scale(glm::vec3(50.0, 50.0, 50.0));
+	scene_.AddNode(skybox_);
+
 }
 
 //create missile, and determine whether hit or not by ray-sphere intersection
@@ -562,4 +607,38 @@ void Game::TurretRotation() {
 	scene_.GetNode("Barrel")->SetPosition(glm::vec3(0, Barrel_Length, 0));
 	scene_.GetNode("Base")->SetOrientation(orientation);
 }
+
+
+SceneNode *Game::CreateInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
+
+	Resource *geom = resman_.GetResource(object_name);
+	if (!geom) {
+		throw(GameException(std::string("Could not find resource \"") + object_name + std::string("\"")));
+	}
+
+	Resource *mat = resman_.GetResource(material_name);
+	if (!mat) {
+		throw(GameException(std::string("Could not find resource \"") + material_name + std::string("\"")));
+	}
+
+	Resource *tex = NULL;
+	if (texture_name != "") {
+		tex = resman_.GetResource(texture_name);
+		if (!tex) {
+			throw(GameException(std::string("Could not find resource \"") + material_name + std::string("\"")));
+		}
+	}
+
+	Resource *envmap = NULL;
+	if (envmap_name != "") {
+		envmap = resman_.GetResource(envmap_name);
+		if (!envmap) {
+			throw(GameException(std::string("Could not find resource \"") + envmap_name + std::string("\"")));
+		}
+	}
+
+	SceneNode *scn = scene_.CreateNode(entity_name, geom, mat, tex, envmap);
+	return scn;
+}
+
 } // namespace game

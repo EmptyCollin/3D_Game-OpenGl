@@ -161,6 +161,10 @@ void Camera::SetupShader(GLuint program){
     // Set projection matrix in shader
     GLint projection_mat = glGetUniformLocation(program, "projection_mat");
     glUniformMatrix4fv(projection_mat, 1, GL_FALSE, glm::value_ptr(projection_matrix_));
+
+	// Set camera position in world coordinates
+	GLint position_vec = glGetUniformLocation(program, "camera_pos");
+	glUniform3fv(position_vec, 1, glm::value_ptr(position_));
 }
 /*
 void Camera::findThird() {

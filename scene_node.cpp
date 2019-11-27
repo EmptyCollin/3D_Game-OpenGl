@@ -9,35 +9,53 @@
 
 namespace game {
 
-SceneNode::SceneNode(const std::string name, const Resource *geometry, const Resource *material){
+	SceneNode::SceneNode(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture, const Resource *envmap) {
 
-    // Set name of scene node
-    name_ = name;
+		// Set name of scene node
+		name_ = name;
 
-    // Set geometry
-    if (geometry->GetType() == PointSet){
-        mode_ = GL_POINTS;
-    } else if (geometry->GetType() == Mesh){
-        mode_ = GL_TRIANGLES;
-    } else {
-        throw(std::invalid_argument(std::string("Invalid type of geometry")));
-    }
+		// Set geometry
+		if (geometry->GetType() == PointSet) {
+			mode_ = GL_POINTS;
+		}
+		else if (geometry->GetType() == Mesh) {
+			mode_ = GL_TRIANGLES;
+		}
+		else {
+			throw(std::invalid_argument(std::string("Invalid type of geometry")));
+		}
 
-    array_buffer_ = geometry->GetArrayBuffer();
-    element_array_buffer_ = geometry->GetElementArrayBuffer();
-    size_ = geometry->GetSize();
+		array_buffer_ = geometry->GetArrayBuffer();
+		element_array_buffer_ = geometry->GetElementArrayBuffer();
+		size_ = geometry->GetSize();
 
-    // Set material (shader program)
-    if (material->GetType() != Material){
-        throw(std::invalid_argument(std::string("Invalid type of material")));
-    }
+		// Set material (shader program)
+		if (material->GetType() != Material) {
+			throw(std::invalid_argument(std::string("Invalid type of material")));
+		}
 
-    material_ = material->GetResource();
+		material_ = material->GetResource();
 
-    // Other attributes
-    scale_ = glm::vec3(1.0, 1.0, 1.0);
-}
+		// Set texture
+		if (texture) {
+			texture_ = texture->GetResource();
+		}
+		else {
+			texture_ = 0;
+		}
 
+		// Set environment map texture
+		if (envmap) {
+			envmap_ = envmap->GetResource();
+		}
+		else {
+			envmap_ = 0;
+		}
+
+		// Other attributes
+		scale_ = glm::vec3(1.0, 1.0, 1.0);
+		blending_ = false;
+	}
 
 SceneNode::~SceneNode(){
 }
@@ -148,35 +166,46 @@ SceneNode *SceneNode::findIt(std::string node_name) {
 }
 
 void SceneNode::Draw(Camera *camera){
-	if (!live) { liveTime -= 1; }
+	// Select blending or not
+	if (blending_) {
+		// Disable z-buffer
+		glDisable(GL_DEPTH_TEST);
 
-	if (liveTime < 0) { appear = false; }
+		// Enable blending
+		glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Simpler form
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
+	}
+	else {
+		// Enable z-buffer
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+	}
 
-	if (appear) {
-		// Select proper material (shader program)
-		glUseProgram(material_);
+	// Select proper material (shader program)
+	glUseProgram(material_);
 
-		// Set geometry to draw
-		glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
+	// Set geometry to draw
+	glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
 
-		// Set globals for camera
-		camera->SetupShader(material_);
-		// Set world matrix and other shader input variables
-		//hierarchy transformations shown in the SetupShader() function
-		SetupShader(material_, camera);
+	// Set globals for camera
+	camera->SetupShader(material_);
 
-		// Draw geometry
-		if (mode_ == GL_POINTS) {
-			glDrawArrays(mode_, 0, size_);
-		}
-		else {
-			glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
-		}
+	// Set world matrix and other shader input variables
+	SetupShader(material_, camera);
 
-		for (int i = 0; i < children.size(); i += 1) {
-			children[i]->Draw(camera);
-		}
+	// Draw geometry
+	if (mode_ == GL_POINTS) {
+		glDrawArrays(mode_, 0, size_);
+	}
+	else {
+		glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
+	}
+
+	for (int i = 0; i < children.size(); i += 1) {
+		children[i]->Draw(camera);
 	}
 }
 
@@ -233,10 +262,50 @@ void SceneNode::SetupShader(GLuint program, Camera* camera){
     GLint world_mat = glGetUniformLocation(program, "world_mat");
     glUniformMatrix4fv(world_mat, 1, GL_FALSE, glm::value_ptr(transf));
 
+
+	// Normal matrix
+	glm::mat4 normal_matrix = glm::transpose(glm::inverse(transf));
+	GLint normal_mat = glGetUniformLocation(program, "normal_mat");
+	glUniformMatrix4fv(normal_mat, 1, GL_FALSE, glm::value_ptr(normal_matrix));
+
+	// Normal matrix with view added
+	glm::mat4 normal_view_matrix = glm::transpose(glm::inverse(camera->GetCurrentViewMatrix() * transf));
+	GLint normal_view_mat = glGetUniformLocation(program, "normal_view_mat");
+	glUniformMatrix4fv(normal_view_mat, 1, GL_FALSE, glm::value_ptr(normal_view_matrix));
+
+	// Texture
+	if (texture_) {
+		GLint tex = glGetUniformLocation(program, "texture_map");
+		glUniform1i(tex, 0); // Assign the first texture to the map
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture_); // First texture we bind
+		// Define texture interpolation
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+
+	// Environment map
+	if (envmap_) {
+		GLint tex = glGetUniformLocation(program, "env_map");
+		glUniform1i(tex, 1); // Assign the first texture to the map
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, envmap_); // First texture we bind
+		// Define texture interpolation
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+
     // Timer
     GLint timer_var = glGetUniformLocation(program, "timer");
     double current_time = glfwGetTime();
     glUniform1f(timer_var, (float) current_time);
+}
+
+glm::mat4 Camera::GetCurrentViewMatrix(void) {
+
+	return view_matrix_;
 }
 
 } // namespace game;

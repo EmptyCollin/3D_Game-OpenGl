@@ -55,6 +55,9 @@ namespace game {
             // Camera abstraction
             Camera camera_;
 
+			// Skybox
+			SceneNode *skybox_;
+
             // Flag to turn animation on/off
             bool animating_;
 
@@ -79,6 +82,8 @@ namespace game {
 			SceneNode *CreateMissileInstance();
 
 			void TurretRotation();
+
+			SceneNode *CreateInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name = std::string(""), std::string envmap_name = std::string(""));
 
 			//handle missile
 			void fire();

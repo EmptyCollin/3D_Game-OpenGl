@@ -20,7 +20,7 @@ namespace game {
 
         public:
             // Create scene node from given resources
-            SceneNode(const std::string name, const Resource *geometry, const Resource *material);
+			SceneNode(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture = NULL, const Resource *envmap = NULL);
 
             // Destructor
             ~SceneNode();
@@ -79,6 +79,10 @@ namespace game {
 			bool getLive() { return live; }
 
         private:
+			GLuint texture_; // Reference to texture resource
+			GLuint envmap_; // Reference to environment map
+			bool blending_; // Draw with blending or not
+
             std::string name_; // Name of the scene node
             GLuint array_buffer_; // References to geometry: vertex and array buffers
             GLuint element_array_buffer_;

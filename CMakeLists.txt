@@ -1,8 +1,21 @@
 cmake_minimum_required(VERSION 2.6)
 
 # Name of project
-set(PROJ_NAME "Assignment3")
+set(PROJ_NAME "Matrix Hell")
 project(${PROJ_NAME})
+
+# Specify project files: header files and source files
+file(GLOB SRC_LIST "*.cpp")
+file(GLOB HDR_LIST "*.h")
+file(GLOB GLS_LIST "*.glsl")
+
+set(HDRS
+    ${HDR_LIST}
+)
+ 
+set(SRCS
+   ${SRC_LIST} ${GLS_LIST}
+)
 
 # Specify project files: header files and source files
 set(HDRS
