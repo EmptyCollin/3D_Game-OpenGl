@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 2.6)
 
 # Name of project
-set(PROJ_NAME Assignment4)
+set(PROJ_NAME "Assignment3")
 project(${PROJ_NAME})
 
 # Specify project files: header files and source files
 set(HDRS
-    asteroid.h camera.h game.h model_loader.h resource.h resource_manager.h scene_graph.h scene_node.h
+    asteroid.h camera.h game.h resource.h resource_manager.h scene_graph.h scene_node.h CameraNode.h
 )
  
 set(SRCS
-   asteroid.cpp camera.cpp game.cpp main.cpp resource.cpp resource_manager.cpp scene_graph.cpp scene_node.cpp material_fp.glsl material_vp.glsl textured_material_fp.glsl textured_material_vp.glsl three-term_shiny_blue_fp.glsl three-term_shiny_blue_vp.glsl 
+   asteroid.cpp camera.cpp game.cpp main.cpp resource.cpp resource_manager.cpp scene_graph.cpp scene_node.cpp CameraNode.cpp material_vp.glsl material_fp.glsl 
 )
 
 # Add path name to configuration file
 configure_file(path_config.h.in path_config.h)
 
-# Add executable based on the source files
+# Add executable based on the header and source files
 add_executable(${PROJ_NAME} ${HDRS} ${SRCS})
 
 # Require OpenGL library

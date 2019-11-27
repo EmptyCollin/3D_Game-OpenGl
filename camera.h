@@ -33,6 +33,7 @@ namespace game {
             glm::vec3 GetSide(void) const;
             glm::vec3 GetUp(void) const;
 
+
             // Perform relative transformations of camera
             void Pitch(float angle);
             void Yaw(float angle);
@@ -48,8 +49,14 @@ namespace game {
             // Set all camera-related variables in shader program
             void SetupShader(GLuint program);
 
-			void setFlag(int a) { Flag = a; }
-			int getFlag() { return Flag; }
+			glm::mat4 getTransf() { return transf; }
+			void updateTransf();
+
+			void updatePos();
+
+			float getAcceleration() { return acceleration; }
+			float getVelocity() { return velocity; }
+			void setAcceleration(float a) { acceleration = a; }
 
         private:
             glm::vec3 position_; // Position of camera
@@ -62,8 +69,11 @@ namespace game {
             // Create view matrix from current camera parameters
             void SetupViewMatrix(void);
 
-			// 1 means no toon
-			int Flag = 1;
+			glm::mat4 transf;
+
+			float acceleration=0;
+			float velocity=0;
+			float maxVelocity = 1.7;
 
     }; // class Camera
 

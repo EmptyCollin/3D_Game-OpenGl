@@ -4,12 +4,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <time.h>
-
+#include <glm/gtx/string_cast.hpp>
 #include "scene_node.h"
 
 namespace game {
 
-SceneNode::SceneNode(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture){
+SceneNode::SceneNode(const std::string name, const Resource *geometry, const Resource *material){
 
     // Set name of scene node
     name_ = name;
@@ -33,13 +33,6 @@ SceneNode::SceneNode(const std::string name, const Resource *geometry, const Res
     }
 
     material_ = material->GetResource();
-
-    // Set texture
-    if (texture){
-        texture_ = texture->GetResource();
-    } else {
-        texture_ = 0;
-    }
 
     // Other attributes
     scale_ = glm::vec3(1.0, 1.0, 1.0);
@@ -140,56 +133,61 @@ GLuint SceneNode::GetMaterial(void) const {
     return material_;
 }
 
+SceneNode *SceneNode::findIt(std::string node_name) {
+	// Find node with the specified name
+	for (int i = 0; i < children.size(); i++) {
+		if (children[i]->GetName() == node_name) {
+			return children[i];
+		}
+		if (children[i]->GetChildren().size() > 0) {
+			SceneNode *a = children[i]->findIt(node_name);
+			if (a != NULL) { return a; }
+		}
+	}
+	return NULL;
+}
 
 void SceneNode::Draw(Camera *camera){
+	if (!live) { liveTime -= 1; }
 
-    // Select proper material (shader program)
-    glUseProgram(material_);
+	if (liveTime < 0) { appear = false; }
 
-	GLint loc = glGetUniformLocation(material_, "Flag");
-	glUniform1i(loc, camera->getFlag());
+	if (appear) {
+		// Select proper material (shader program)
+		glUseProgram(material_);
 
-	GLint loc1 = glGetUniformLocation(material_, "eye_x");
-	glUniform1i(loc1, camera->GetPosition().x);
-	GLint loc2 = glGetUniformLocation(material_, "eye_y");
-	glUniform1i(loc2, camera->GetPosition().y);
-	GLint loc3 = glGetUniformLocation(material_, "eye_z");
-	glUniform1i(loc3, camera->GetPosition().z);
+		// Set geometry to draw
+		glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
 
-    // Set geometry to draw
-    glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
+		// Set globals for camera
+		camera->SetupShader(material_);
+		// Set world matrix and other shader input variables
+		//hierarchy transformations shown in the SetupShader() function
+		SetupShader(material_, camera);
 
-    // Set globals for camera
-    camera->SetupShader(material_);
-	SetOwnTran();
-    // Set world matrix and other shader input variables
-    SetupShader(material_);
-	
-    // Draw geometry
-    if (mode_ == GL_POINTS){
-        glDrawArrays(mode_, 0, size_);
-    } else {
-        glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
-    }
+		// Draw geometry
+		if (mode_ == GL_POINTS) {
+			glDrawArrays(mode_, 0, size_);
+		}
+		else {
+			glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
+		}
+
+		for (int i = 0; i < children.size(); i += 1) {
+			children[i]->Draw(camera);
+		}
+	}
 }
 
 
 void SceneNode::Update(void){
 
-    // Do nothing for this generic type of scene node
-}
-
-void SceneNode::SetOwnTran() {
-	glm::mat4 scaling = glm::scale(glm::mat4(1.0), scale_);
-	glm::mat4 rotation = glm::mat4_cast(orientation_);
-	glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
-
-	transfer = translation * rotation * scaling;
+   
 }
 
 
-void SceneNode::SetupShader(GLuint program){
+void SceneNode::SetupShader(GLuint program, Camera* camera){
 
     // Set attributes for shaders
     GLint vertex_att = glGetAttribLocation(program, "vertex");
@@ -207,46 +205,33 @@ void SceneNode::SetupShader(GLuint program){
     GLint tex_att = glGetAttribLocation(program, "uv");
     glVertexAttribPointer(tex_att, 2, GL_FLOAT, GL_FALSE, 11*sizeof(GLfloat), (void *) (9*sizeof(GLfloat)));
     glEnableVertexAttribArray(tex_att);
-
-    // World transformation
-    glm::mat4 scaling = glm::scale(glm::mat4(1.0), scale_);
-    glm::mat4 rotation = glm::mat4_cast(orientation_);
-    glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
-
 	
-	glm::mat4 BaBaTran = glm::mat4(1.0);
-	
-	if (BaBa != NULL) {
-		BaBaTran = BaBa->getTran();
+	glm::mat4 transf;
+
+	// World transformation
+	glm::mat4 scaling = glm::scale(glm::mat4(1.0), scale_);
+	glm::mat4 rotation = glm::mat4_cast(orientation_);
+	glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
+
+	if (parent && parent->GetName() != "Camera") {
+		transf = parent->getTran() * translation * rotation * scaling;
+		if (name_ == "Canon") { transf = glm::rotate(transf, Rotation, glm::vec3(0.0, 0.0, 1.0)); }
+		TransferMatrix = transf;	
+	}
+	else if (name_ == "Ship_Body") {
+		transf = parent->getTran() * translation * rotation * scaling;
+		TransferMatrix = transf;
+	}
+	else if (name_ == "Missile") {
+		transf = TransferMatrix * translation;
+	}
+	else {
+		transf = translation * rotation * scaling;
+		TransferMatrix = transf;
 	}
 	
-    glm::mat4 transf = BaBaTran * translation * rotation * scaling;
-
-	if (name_ == "Canon") { transf = glm::rotate(transf, Rotation, glm::vec3(0.0, 0.0, 1.0)); }
-
-	transfer = transf;
-
     GLint world_mat = glGetUniformLocation(program, "world_mat");
     glUniformMatrix4fv(world_mat, 1, GL_FALSE, glm::value_ptr(transf));
-
-    // Normal matrix
-    glm::mat4 normal_matrix = glm::transpose(glm::inverse(transf));
-    GLint normal_mat = glGetUniformLocation(program, "normal_mat");
-    glUniformMatrix4fv(normal_mat, 1, GL_FALSE, glm::value_ptr(normal_matrix));
-
-    // Texture
-    if (texture_){
-        GLint tex = glGetUniformLocation(program, "texture_map");
-        glUniform1i(tex, 0); // Assign the first texture to the map
-        glActiveTexture(GL_TEXTURE0); 
-		
-		glBindTexture(GL_TEXTURE_2D, texture_); // First texture we bind
-
-        // Define texture interpolation
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
 
     // Timer
     GLint timer_var = glGetUniformLocation(program, "timer");

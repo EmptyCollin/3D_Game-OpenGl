@@ -16,6 +16,29 @@ Camera::Camera(void){
 Camera::~Camera(){
 }
 
+void Camera::updatePos() {
+
+	velocity += acceleration;
+	
+	if (velocity > maxVelocity) { velocity = maxVelocity; }
+	if (velocity < -maxVelocity) { velocity = -maxVelocity; }
+
+	glm::vec3 current_forward = orientation_ * forward_;
+	glm::vec3 translates = current_forward * velocity;
+	position_ += translates;
+}
+
+void Camera::updateTransf() {
+
+	// World transformation
+
+	glm::mat4 scaling = glm::scale(glm::mat4(1.0), glm::vec3(1.0,1.0,1.0));
+	glm::mat4 rotation = glm::mat4_cast(orientation_);
+	glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
+
+	transf = translation * rotation * scaling;
+}
+
 
 glm::vec3 Camera::GetPosition(void) const {
 
@@ -87,7 +110,7 @@ void Camera::Pitch(float angle){
 
 
 void Camera::Yaw(float angle){
-
+	//glm::vec3 upp = glm::vec3(GetUp().x,GetUp().y-1,GetUp().z-15);
     glm::quat rotation = glm::angleAxis(angle, GetUp());
     orientation_ = rotation * orientation_;
     orientation_ = glm::normalize(orientation_);
@@ -139,8 +162,13 @@ void Camera::SetupShader(GLuint program){
     GLint projection_mat = glGetUniformLocation(program, "projection_mat");
     glUniformMatrix4fv(projection_mat, 1, GL_FALSE, glm::value_ptr(projection_matrix_));
 }
-
-
+/*
+void Camera::findThird() {
+	float trans_UP = 2.0;
+	float trans_Back = -15.0;
+	Third_camera_position_g = position_ + forward_ * trans_Back + GetUp() * trans_UP;
+}
+*/
 void Camera::SetupViewMatrix(void){
 
     //view_matrix_ = glm::lookAt(position, look_at, up);

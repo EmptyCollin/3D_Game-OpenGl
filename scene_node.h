@@ -2,6 +2,7 @@
 #define SCENE_NODE_H_
 
 #include <string>
+#include <vector>
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -19,7 +20,7 @@ namespace game {
 
         public:
             // Create scene node from given resources
-            SceneNode(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture = NULL);
+            SceneNode(const std::string name, const Resource *geometry, const Resource *material);
 
             // Destructor
             ~SceneNode();
@@ -56,12 +57,26 @@ namespace game {
             GLsizei GetSize(void) const;
             GLuint GetMaterial(void) const;
 
+			void SetParent(SceneNode *P) { parent = P; }
+			void AddChild(SceneNode *C) { children.push_back(C); }
+			SceneNode* GetParent() { return parent; }
+			std::vector<SceneNode*> GetChildren() { return children; }
 
-			void SetOwnTran();
-			glm::mat4 getTran() { return transfer; }
-			void setBaBa(SceneNode* baba) { BaBa = baba; }
+			glm::mat4 getTran() { return TransferMatrix; }
+			void SetTran(glm::mat4 Tr) { TransferMatrix = Tr; }
+			SceneNode *findIt(std::string node_name);
 
-			void setRotation(float r) { Rotation = r; }
+			void SetRotation(float r) { Rotation = r; }
+
+			bool getAppear() { return appear; }
+			void setAppear(bool a) { appear = a; }
+
+			float getVel() { return vel; }
+
+			void setLive(bool l) { live = l; }
+			void setLiveTime(float lt) { liveTime = lt; }
+
+			bool getLive() { return live; }
 
         private:
             std::string name_; // Name of the scene node
@@ -70,19 +85,30 @@ namespace game {
             GLenum mode_; // Type of geometry
             GLsizei size_; // Number of primitives in geometry
             GLuint material_; // Reference to shader program
-            GLuint texture_; // Reference to texture resource
             glm::vec3 position_; // Position of node
             glm::quat orientation_; // Orientation of node
             glm::vec3 scale_; // Scale of node
 
-            // Set matrices that transform the node in a shader program
-            void SetupShader(GLuint program);
+			glm::mat4 TransferMatrix = glm::mat4(1.0);
 
+            // Set matrices that transform the node in a shader program
+            void SetupShader(GLuint program,Camera* camera);
+
+			SceneNode *parent;
+			std::vector<SceneNode*> children;
+
+			//Special variable for canon
 			float Rotation;
 
-			glm::mat4 transfer = glm::mat4(1.0);
+			//Special variable for ship
+			bool appear = true;
 
-			SceneNode* BaBa = NULL;
+			//Special variable for missile
+			float vel = 5.0;
+
+			float liveTime = 5000;
+			bool live = true;
+
     }; // class SceneNode
 
 } // namespace game

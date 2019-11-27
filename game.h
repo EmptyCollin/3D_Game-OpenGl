@@ -11,6 +11,7 @@
 #include "resource_manager.h"
 #include "camera.h"
 #include "asteroid.h"
+#include "CameraNode.h"
 
 namespace game {
 
@@ -69,15 +70,34 @@ namespace game {
             // Asteroid field
             // Create instance of one asteroid
             Asteroid *CreateAsteroidInstance(std::string entity_name, std::string object_name, std::string material_name);
-            // Create entire random asteroid field
-            void CreateAsteroidField(int num_asteroids = 1500);
+			// Create entire random asteroid field
+			void CreateAsteroidField(int num_asteroids = 1500);
 
-            // Create an instance of an object stored in the resource manager
-            SceneNode *CreateInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name = std::string(""));
+			void CreateCameraInstance();
+			void CreateCanonInstance();
+			void CreateShipInstance();
+			SceneNode *CreateMissileInstance();
 
-			void CreateTurret();
-			void CreateBird();
-			void CreateChicken();
+			void TurretRotation();
+
+			//handle missile
+			void fire();
+			void updateMissile();
+
+			//variable to control Turret
+			glm::quat orientation;
+			float angle = 1.0472;
+			float increasement = 0.02;
+			float lowAn = 1.0472;
+			float highAn = 2.0944;
+
+			float Barrel_Length = 0.5;
+			float LNincrease = 0.001;
+			float lowLn = 0.11;
+			float highLn = 0.66;
+
+			//variable to control Ship
+			bool appear = true;
 
     }; // class Game
 
