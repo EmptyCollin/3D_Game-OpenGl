@@ -240,6 +240,7 @@ void ResourceManager::LoadMesh(const std::string name, const char *filename) {
 			if (part.size() >= 4) {
 				glm::vec3 position(str_to_num<float>(part[1].c_str()), str_to_num<float>(part[2].c_str()), str_to_num<float>(part[3].c_str()));
 				mesh.position.push_back(position);
+
 			}
 			else {
 				throw(std::ios_base::failure(std::string("Error: v command should have exactly 3 parameters")));
@@ -295,6 +296,7 @@ void ResourceManager::LoadMesh(const std::string name, const char *filename) {
 							quad.n[i] = str_to_num<float>(fd[2].c_str()) - 1;
 						}
 						else {
+							quad.i[i] = str_to_num<float>(fd[i].c_str()) - 1;
 							throw(std::ios_base::failure(std::string("Error: f parameter should have 1 or 3 parameters separated by '/'")));
 						}
 					}
@@ -563,6 +565,98 @@ void ResourceManager::CreateCube(std::string object_name) {
 
 	// Create resource
 	AddResource(Mesh, object_name, vbo, ebo, sizeof(face) / sizeof(GLfloat));
+}
+
+void ResourceManager::CreateMirror(std::string object_name)
+{
+	int segment_num = 800;
+	int vertex_num = segment_num + 1;
+	int vertex_att = 11;
+	int face_num = segment_num;
+	int face_att = 3;
+
+	GLfloat *vertex = NULL;
+	GLuint *face = NULL;
+
+	try {
+		vertex = new GLfloat[vertex_num * vertex_att]; // 11 attributes per vertex: 3D position (3), 3D normal (3), RGB color (3), 2D texture coordinates (2)
+		face = new GLuint[face_num * face_att]; // 3 indices per face
+	}
+	catch (std::exception &e) {
+		throw e;
+	}
+
+	float theta = 2.0*glm::pi<GLfloat>() / segment_num;
+
+	// origin
+	vertex[segment_num * vertex_att + 0] = 0.0;
+	vertex[segment_num * vertex_att + 1] = 0.0;
+	vertex[segment_num * vertex_att + 2] = 0.0;
+	vertex[segment_num * vertex_att + 3] = 0.0;
+	vertex[segment_num * vertex_att + 4] = 0.0;
+	vertex[segment_num * vertex_att + 6] = 1.0;
+	vertex[segment_num * vertex_att + 6] = 0.0;
+	vertex[segment_num * vertex_att + 7] = 0.0;
+	vertex[segment_num * vertex_att + 8] = 0.0;
+	vertex[segment_num * vertex_att + 9] = 0.0;
+	vertex[segment_num * vertex_att + 10] = 0.0;
+
+	float radius = rand() / (float)RAND_MAX / 3 + 0.5;
+	int dir = 1;	// radius inrease(1) or decrease(1)
+	float delta = 0.01;
+	int count = 1;	// count the time of increasing(>0) or decreasing(<0) 
+	for (int i = 1; i <= segment_num;i++) {
+		if (i % 4 == 0) {
+			if ((segment_num - i) / 4 <= abs(count)) {
+				dir = count > 0 ? -1 : 1;
+			}
+			else{
+				dir = rand() % 2 == 0 ? 1 : -1;
+				count += dir;
+			}
+		}
+		radius += dir * delta;
+		vertex[i*vertex_att + 0] = cos(i*theta) * 0.5;
+		vertex[i*vertex_att + 1] = sin(i*theta) * 0.5;
+		vertex[i*vertex_att + 2] = 0.0;
+		vertex[i*vertex_att + 3] = 0.0;
+		vertex[i*vertex_att + 4] = 0.0;
+		vertex[i*vertex_att + 5] = 1.0;
+		vertex[i*vertex_att + 6] = 0.0;
+		vertex[i*vertex_att + 7] = 0.0;
+		vertex[i*vertex_att + 8] = 0.0;
+		vertex[i*vertex_att + 9] = 0.0;
+		vertex[i*vertex_att + 10] = 0.0;
+		printf("vertex{%d}:%f,%f\n", i, vertex[i*vertex_att + 0], vertex[i*vertex_att + 1]);
+	}
+
+	// Create triangles
+	for (int i = 0; i < segment_num; i++) {
+		// Two triangles per quad
+		glm::vec3 t(segment_num, i , (i + 1) % segment_num);
+
+		// Add two triangles to the data buffer
+		for (int k = 0; k < 3; k++) {
+			face[i*face_att + k] = (GLuint)t[k];
+		}
+	}
+
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, vertex_num * vertex_att * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, face_num * face_att * sizeof(GLuint), face, GL_STATIC_DRAW);
+
+	// Free data buffers
+	delete[] vertex;
+	delete[] face;
+
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, face_num * face_att);
+
 }
 
 void ResourceManager::CreateTorus(std::string object_name, float loop_radius, float circle_radius, int num_loop_samples, int num_circle_samples){

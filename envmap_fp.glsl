@@ -11,9 +11,9 @@ float phong_exponent = 128.0;
 // Ambient light amount
 float Ia = 0.1; 
 // Albedo of the material
-vec3 ambient_albedo = vec3(0.0, 0.0, 1.0);
+vec3 ambient_albedo = vec3(0.3, 0.3, 0.3);
 vec3 diffuse_albedo = vec3(0.0, 0.0, 0.5);
-vec3 specular_albedo = vec3(0.8, 0.5, 0.9);
+vec3 specular_albedo = vec3(0.0, 0.0, 0.0);
 
 // Uniforms
 // Camera position in world coordinates
@@ -54,11 +54,11 @@ void main()
 
     // Compute indirect lighting with environment map
     // Reflection vector
-    vec3 Lr = 2.0 * dot(N, V) * N - V;
+    //vec3 Lr = 2.0 * dot(N, V) * N - V;
 
     // When using GLSL's reflect, we input the vector from eye to point
-    //vec3 Valt = position_interp - camera_pos;
-    //vec3 Lr = reflect(Valt, N);
+    vec3 Valt = position_interp - camera_pos;
+    vec3 Lr = reflect(Valt, N);
 
     // Query environment map
     vec4 il = texture(env_map, Lr);

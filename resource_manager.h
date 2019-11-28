@@ -46,6 +46,8 @@ namespace game {
 			void LoadCubeMap(const std::string name, const char * filename);
 
 			void CreateCube(std::string object_name);
+
+			void CreateMirror(std::string object_name);
         private:
             // List storing all resources
             std::vector<Resource*> resource_; 

@@ -166,47 +166,51 @@ SceneNode *SceneNode::findIt(std::string node_name) {
 }
 
 void SceneNode::Draw(Camera *camera){
-	// Select blending or not
-	if (blending_) {
-		// Disable z-buffer
-		glDisable(GL_DEPTH_TEST);
 
-		// Enable blending
-		glEnable(GL_BLEND);
-		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Simpler form
-		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
+	if (appear) {
+		// Select blending or not
+		if (blending_) {
+			// Disable z-buffer
+			glDisable(GL_DEPTH_TEST);
+
+			// Enable blending
+			glEnable(GL_BLEND);
+			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Simpler form
+			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
+		}
+		else {
+			// Enable z-buffer
+			glEnable(GL_DEPTH_TEST);
+			glDepthFunc(GL_LESS);
+		}
+
+		// Select proper material (shader program)
+		glUseProgram(material_);
+
+		// Set geometry to draw
+		glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
+
+		// Set globals for camera
+		camera->SetupShader(material_);
+
+		// Set world matrix and other shader input variables
+		SetupShader(material_, camera);
+
+		// Draw geometry
+		if (mode_ == GL_POINTS) {
+			glDrawArrays(mode_, 0, size_);
+		}
+		else {
+			glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
+		}
+
+		for (int i = 0; i < children.size(); i += 1) {
+			children[i]->Draw(camera);
+		}
 	}
-	else {
-		// Enable z-buffer
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-	}
-
-	// Select proper material (shader program)
-	glUseProgram(material_);
-
-	// Set geometry to draw
-	glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
-
-	// Set globals for camera
-	camera->SetupShader(material_);
-
-	// Set world matrix and other shader input variables
-	SetupShader(material_, camera);
-
-	// Draw geometry
-	if (mode_ == GL_POINTS) {
-		glDrawArrays(mode_, 0, size_);
-	}
-	else {
-		glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
-	}
-
-	for (int i = 0; i < children.size(); i += 1) {
-		children[i]->Draw(camera);
-	}
+	
 }
 
 

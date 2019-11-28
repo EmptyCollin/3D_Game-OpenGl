@@ -41,7 +41,7 @@ namespace game {
             // Add an already-created node
             void AddNode(SceneNode *node);
             // Find a scene node with a specific name
-            SceneNode *GetNode(std::string node_name) const;
+            SceneNode *GetNode(std::string node_name);
             // Get node const iterator
             std::vector<SceneNode *>::const_iterator begin() const;
             std::vector<SceneNode *>::const_iterator end() const;

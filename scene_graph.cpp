@@ -50,7 +50,7 @@ void SceneGraph::AddNode(SceneNode *node){
 }
 
 
-SceneNode *SceneGraph::GetNode(std::string node_name) const {
+SceneNode *SceneGraph::GetNode(std::string node_name) {
 
     // Find node with the specified name
     for (int i = 0; i < root->GetChildren().size(); i++){

@@ -22,7 +22,7 @@ float camera_near_clip_distance_g = 0.01;
 float camera_far_clip_distance_g = 1000.0;
 float camera_fov_g = 50.0; // Field-of-view of camera
 const glm::vec3 viewport_background_color_g(0.0, 0.0, 0.0);
-glm::vec3 camera_position_g(0.0, 0.0, 800.0);
+glm::vec3 camera_position_g(0.0, 10.0, 20.0);
 glm::vec3 camera_look_at_g(0.0, 0.0, 0.0);
 glm::vec3 camera_up_g(0.0, 1.0, 0.0);
 
@@ -142,10 +142,12 @@ void Game::SetupResources(void){
 	// Create a cube for the skybox
 	resman_.CreateCube("CubeMesh");
 
-
-    // Load material to be applied to asteroids
+	// Load material to be applied to asteroids
     std::string filename = std::string(MATERIAL_DIRECTORY) + std::string("/material");
     resman_.LoadResource(Material, "ObjectMaterial", filename.c_str());
+
+	// Create mirror plane
+	resman_.CreateMirror("MirrorMesh");
 
 
 	// Load material to be applied to torus
@@ -153,8 +155,8 @@ void Game::SetupResources(void){
 	resman_.LoadResource(Material, "EnvMapMaterial", filename.c_str());
 
 	// Load cube map to be applied to skybox
-	filename = std::string(MATERIAL_DIRECTORY) + std::string("/island/island.tga");
-	resman_.LoadResource(CubeMap, "LakeCubeMap", filename.c_str());
+	filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox/siege.tga");
+	resman_.LoadResource(CubeMap, "SkyboxCubeMap", filename.c_str());
 
 	// Load material to be applied to skybox
 	filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox");
@@ -170,22 +172,29 @@ void Game::SetupScene(void){
 
     // Create asteroid field
 	CreateCameraInstance();
-    CreateAsteroidField();
-	CreateCanonInstance();
 	CreateShipInstance();
 
-
+	/*
 	// Create an instance of the torus mesh
-	game::SceneNode *torus = CreateInstance("TorusInstance1", "TorusMesh", "EnvMapMaterial", "", "LakeCubeMap");
+	game::SceneNode *torus = CreateInstance("TorusInstance1", "CubeMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
 	// Scale the instance
-	torus->Scale(glm::vec3(1.5, 1.5, 1.5));
-	torus->Translate(glm::vec3(0.0, 0.0, 780.0));
+	torus->Scale(glm::vec3(5));
+	torus->Translate(glm::vec3(0.0, 0.0, 0.0));
 	scene_.AddNode(torus);
-
+	*/
 	// Create skybox
-	skybox_ = CreateInstance("CubeInstance1", "CubeMesh", "SkyboxMaterial", "LakeCubeMap");
-	skybox_->Scale(glm::vec3(50.0, 50.0, 50.0));
+	skybox_ = CreateInstance("CubeInstance1", "CubeMesh", "SkyboxMaterial", "SkyboxCubeMap");
+	skybox_->Scale(glm::vec3(200));
+	skybox_->Translate(glm::vec3(0.0, 100.0, 0.0));
 	scene_.AddNode(skybox_);
+
+	// Create a lake
+	game::SceneNode *lake = CreateInstance("Lake1", "MirrorMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
+	// Scale the instance
+	lake->Scale(glm::vec3(20));
+	lake->Translate(glm::vec3(0.0, 0.5, 0.0));
+	lake->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1.0, 0.0, 0.0)));
+	scene_.AddNode(lake);
 
 }
 
@@ -355,6 +364,8 @@ void Game::KeyCallback(GLFWwindow* window, int key, int scancode, int action, in
     if (key == GLFW_KEY_K){
         game->camera_.Translate(-game->camera_.GetUp()*trans_factor);
     }
+
+
 	//change view setting
 	if (key == GLFW_KEY_V && action == GLFW_PRESS) {
 		if (game->scene_.GetNode("Ship_Body")->getAppear() == true) {
