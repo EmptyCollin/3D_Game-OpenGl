@@ -291,8 +291,6 @@ void Game::MainLoop(void){
 		//handle missile
 		updateMissile();
 
-		TurretRotation();
-
         // Draw the scene
         scene_.Draw(&camera_);
 
