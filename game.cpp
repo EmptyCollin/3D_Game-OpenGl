@@ -1,653 +1,550 @@
 #include <iostream>
 #include <time.h>
 #include <sstream>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include "game.h"
 #include "bin/path_config.h"
 
 namespace game {
 
-// Some configuration constants
-// They are written here as global variables, but ideally they should be loaded from a configuration file
+	// Some configuration constants
+	// They are written here as global variables, but ideally they should be loaded from a configuration file
 
-// Main window settings
-const std::string window_title_g = "Demo";
-const unsigned int window_width_g = 800;
-const unsigned int window_height_g = 600;
-const bool window_full_screen_g = false;
+	// Main window settings
+	const std::string window_title_g = "Matrix Hell";
+	const unsigned int window_width_g = 800;
+	const unsigned int window_height_g = 600;
+	const bool window_full_screen_g = false;
 
-// Viewport and camera settings
-float camera_near_clip_distance_g = 0.01;
-float camera_far_clip_distance_g = 1000.0;
-float camera_fov_g = 50.0; // Field-of-view of camera
-const glm::vec3 viewport_background_color_g(0.0, 0.0, 0.0);
-glm::vec3 camera_position_g(0.0, 10.0, 20.0);
-glm::vec3 camera_look_at_g(0.0, 0.0, 0.0);
-glm::vec3 camera_up_g(0.0, 1.0, 0.0);
+	// Viewport and camera settings
+	float camera_near_clip_distance_g = 0.01;
+	float camera_far_clip_distance_g = 1000.0;
+	float camera_fov_g = 20.0; // Field-of-view of camera
+	const glm::vec3 viewport_background_color_g(0.0, 0.0, 0.0);
+	glm::vec3 camera_position_g(0.0, 0.0, 2.0);
+	glm::vec3 camera_look_at_g(0.0, 0.0, 0.0);
+	glm::vec3 camera_up_g(0.0, 1.0, 0.0);
 
-
-bool FIRST_VIEW = false;
-
-// Materials 
-const std::string material_directory_g = MATERIAL_DIRECTORY;
+	// Materials 
+	const std::string material_directory_g = MATERIAL_DIRECTORY;
 
 
-Game::Game(void){
+	Game::Game(void) {
 
-    // Don't do work in the constructor, leave it for the Init() function
-}
-
-
-void Game::Init(void){
-
-    // Run all initialization steps
-    InitWindow();
-    InitView();
-    InitEventHandlers();
-
-    // Set variables
-    animating_ = true;
-}
-
-       
-void Game::InitWindow(void){
-
-    // Initialize the window management library (GLFW)
-    if (!glfwInit()){
-        throw(GameException(std::string("Could not initialize the GLFW library")));
-    }
-
-    // Create a window and its OpenGL context
-    if (window_full_screen_g){
-        window_ = glfwCreateWindow(window_width_g, window_height_g, window_title_g.c_str(), glfwGetPrimaryMonitor(), NULL);
-    } else {
-        window_ = glfwCreateWindow(window_width_g, window_height_g, window_title_g.c_str(), NULL, NULL);
-    }
-    if (!window_){
-        glfwTerminate();
-        throw(GameException(std::string("Could not create window")));
-    }
-
-    // Make the window's context the current one
-    glfwMakeContextCurrent(window_);
-
-    // Initialize the GLEW library to access OpenGL extensions
-    // Need to do it after initializing an OpenGL context
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (err != GLEW_OK){
-        throw(GameException(std::string("Could not initialize the GLEW library: ")+std::string((const char *) glewGetErrorString(err))));
-    }
-}
-
-
-void Game::InitView(void){
-
-    // Set up z-buffer
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-
-    // Set viewport
-    int width, height;
-    glfwGetFramebufferSize(window_, &width, &height);
-    glViewport(0, 0, width, height);
-
-    // Set up camera
-    // Set current view
-    camera_.SetView(camera_position_g, camera_look_at_g, camera_up_g);
-    // Set projection
-    camera_.SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
-}
-
-
-void Game::InitEventHandlers(void){
-
-    // Set event callbacks
-    glfwSetKeyCallback(window_, KeyCallback);
-    glfwSetFramebufferSizeCallback(window_, ResizeCallback);
-
-    // Set pointer to game object, so that callbacks can access it
-    glfwSetWindowUserPointer(window_, (void *) this);
-}
-
-
-void Game::SetupResources(void){
-
-    // Create a simple sphere to represent the asteroids
-    resman_.CreateSphere("SimpleSphereMesh", 1.0, 10, 10);
-	resman_.CreateTorus("SimpleTorusMesh", 0.4, 0.2, 90, 30);
-	resman_.CreateCube("SimpleCubeMesh", 0.16);
-	resman_.CreateSphere("SimpleSphereMesh_Ship", 1.2, 10, 10);
-	resman_.CreateCylinder("SimpleCylinderMesh_ShipCanon", 0.2, 0.4);
-
-	resman_.CreateCylinder("SimpleCylinderMesh_Center",0.45,0.5);
-	resman_.CreateCylinder("SimpleCylinderMesh_Base", 0.24, 0.6);
-	resman_.CreateCylinder("SimpleCylinderMesh_Canon", 0.09, 0.45);
-	resman_.CreateCylinder("SimpleCylinderMesh_Barrel", 0.05, 0.88);
-
-
-	// Create a torus
-	resman_.CreateTorus("TorusMesh");
-
-	// Use sphere to better analyze the environment map
-	//resman_.CreateSphere("TorusMesh");
-
-
-	
-	// Can also check reflections on a cube
-	std::string cube_filename = std::string(MATERIAL_DIRECTORY) + std::string("/dense_cube.aobj");
-	//resman_.LoadResource(Mesh, "TorusMesh", cube_filename.c_str());
-
-	// Create a cube for the skybox
-	resman_.CreateCube("CubeMesh");
-
-	// Load material to be applied to asteroids
-    std::string filename = std::string(MATERIAL_DIRECTORY) + std::string("/material");
-    resman_.LoadResource(Material, "ObjectMaterial", filename.c_str());
-
-	// Create mirror plane
-	resman_.CreateMirror("MirrorMesh");
-
-
-	// Load material to be applied to torus
-	filename = std::string(MATERIAL_DIRECTORY) + std::string("/envmap");
-	resman_.LoadResource(Material, "EnvMapMaterial", filename.c_str());
-
-	// Load cube map to be applied to skybox
-	filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox/siege.tga");
-	resman_.LoadResource(CubeMap, "SkyboxCubeMap", filename.c_str());
-
-	// Load material to be applied to skybox
-	filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox");
-	resman_.LoadResource(Material, "SkyboxMaterial", filename.c_str());
-
-}
-
-
-void Game::SetupScene(void){
-
-    // Set background color for the scene
-    scene_.SetBackgroundColor(viewport_background_color_g);
-
-    // Create asteroid field
-	CreateCameraInstance();
-	CreateShipInstance();
-
-	/*
-	// Create an instance of the torus mesh
-	game::SceneNode *torus = CreateInstance("TorusInstance1", "CubeMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
-	// Scale the instance
-	torus->Scale(glm::vec3(5));
-	torus->Translate(glm::vec3(0.0, 0.0, 0.0));
-	scene_.AddNode(torus);
-	*/
-	// Create skybox
-	skybox_ = CreateInstance("CubeInstance1", "CubeMesh", "SkyboxMaterial", "SkyboxCubeMap");
-	skybox_->Scale(glm::vec3(200));
-	skybox_->Translate(glm::vec3(0.0, 100.0, 0.0));
-	scene_.AddNode(skybox_);
-
-	// Create a lake
-	game::SceneNode *lake = CreateInstance("Lake1", "MirrorMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
-	// Scale the instance
-	lake->Scale(glm::vec3(20));
-	lake->Translate(glm::vec3(0.0, 0.5, 0.0));
-	lake->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1.0, 0.0, 0.0)));
-	scene_.AddNode(lake);
-
-}
-
-//create missile, and determine whether hit or not by ray-sphere intersection
-void Game::fire() {
-	SceneNode *missile = CreateMissileInstance();
-	glm::vec3 B = camera_.GetForward();
-	glm::vec3 A = camera_.GetPosition();
-
-	for (int i = 0; i < scene_.getRoot()->GetChildren().size(); i += 1) {
-		SceneNode *NODE = scene_.getRoot()->GetChildren()[i];
-
-		if ((NODE->GetName() != "Ship_Body" && NODE->GetName() != "Base" && NODE->GetName() != "Missile" && NODE->getLive() == true)) {
-			glm::vec3 C = NODE->GetPosition();
-			float a = glm::dot(B, B);
-			float b = 2 * glm::dot(B, A-C);
-			float c = glm::dot(A-C,A-C) - 1;
-			if (b*b - 4 * a*c >= 0) {
-				glm::vec3 Pos = NODE->GetPosition();
-				float distance = sqrt((A.x - Pos.x)*(A.x - Pos.x) + (A.y - Pos.y)*(A.y - Pos.y) + (A.z - Pos.z)*(A.z - Pos.z));
-				float Time = distance / 5;
-				NODE->setLiveTime(Time);
-				NODE->setLive(false);
-				missile->setLiveTime(Time);
-				missile->setLive(false);
-
-			}
-		}
+		// Don't do work in the constructor, leave it for the Init() function
 	}
-	scene_.AddNode(missile);
-}
 
 
-//handle missile firing and hit
-void Game::updateMissile(){
-	for (int i = 0; i < scene_.getRoot()->GetChildren().size(); i += 1) {
-		SceneNode *NODE = scene_.getRoot()->GetChildren()[i];
-		if (NODE->GetName() == "Missile") {
-			glm::vec3 Pos = NODE->GetPosition();
-			NODE->SetPosition(glm::vec3(Pos.x, Pos.y, Pos.z - 5.0));			
-		}
+	void Game::Init(void) {
+
+		// Run all initialization steps
+		InitWindow();
+		InitView();
+		InitEventHandlers();
+
+		// Set variables
+		animating_ = true;
 	}
-}
-
-void Game::MainLoop(void){
-    // Loop while the user did not close the window
-    while (!glfwWindowShouldClose(window_)){
-        // Animate the scene
-        if (animating_){
-            static double last_time = 0;
-            double current_time = glfwGetTime();
-            if ((current_time - last_time) > 0.05){
-                scene_.Update();
-                last_time = current_time;
-
-				//Canon control
-				glm::quat rotation = glm::angleAxis(glm::pi<float>() / 45.0f, glm::vec3(0.0, 1.0, 0.0));
-				orientation *= rotation;
-
-				// canon rotation
-				if (angle <= lowAn && increasement < 0) {
-					increasement *= -1;
-				}
-				else if (angle >= highAn && increasement > 0) {
-					increasement *= -1;
-				}
-
-				angle += increasement;
-
-				// canon in and out
-				if (Barrel_Length <= lowLn && LNincrease < 0) {
-					LNincrease *= -1;
-				}
-				else if (Barrel_Length >= highLn && LNincrease > 0) {
-					LNincrease *= -1;
-				}
-
-				Barrel_Length += LNincrease;
 
 
-				// Update time
-				last_time = current_time;
+	void Game::InitWindow(void) {
 
-				
-            }
-        }
-		//handle velocity, acceleration
-		camera_.updatePos();
+		// Initialize the window management library (GLFW)
+		if (!glfwInit()) {
+			throw(GameException(std::string("Could not initialize the GLFW library")));
+		}
 
-		//handle transf
-		camera_.updateTransf();
-		scene_.getRoot()->SetTran(camera_.getTransf());
-
-		//handle missile
-		updateMissile();
-
-        // Draw the scene
-        scene_.Draw(&camera_);
-
-        // Push buffer drawn in the background onto the display
-        glfwSwapBuffers(window_);
-
-        // Update other events like input handling
-        glfwPollEvents();
-    }
-}
-
-
-void Game::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods){
-
-    // Get user data with a pointer to the game class
-    void* ptr = glfwGetWindowUserPointer(window);
-    Game *game = (Game *) ptr;
-
-    // Quit game if 'q' is pressed
-    if (key == GLFW_KEY_Q && action == GLFW_PRESS){
-        glfwSetWindowShouldClose(window, true);
-    }
-
-    // Stop animation if space bar is pressed
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS){
-        game->animating_ = (game->animating_ == true) ? false : true;
-    }
-
-    // View control
-    float rot_factor(glm::pi<float>() / 180);
-    float trans_factor = 1.0;
-	
-	//for view change
-	float trans_factors = 2.0;
-	float view_factor = 15.0;
-    if (key == GLFW_KEY_UP){
-        game->camera_.Pitch(rot_factor);
-    }
-    if (key == GLFW_KEY_DOWN){
-        game->camera_.Pitch(-rot_factor);
-    }
-    if (key == GLFW_KEY_LEFT){
-        game->camera_.Yaw(rot_factor);
-    }
-    if (key == GLFW_KEY_RIGHT){
-        game->camera_.Yaw(-rot_factor);
-    }
-    if (key == GLFW_KEY_S){
-        game->camera_.Roll(-rot_factor);
-    }
-    if (key == GLFW_KEY_X){
-        game->camera_.Roll(rot_factor);
-    }
-    if (key == GLFW_KEY_A){
-        game->camera_.setAcceleration(-0.01);
-    }
-    if (key == GLFW_KEY_Z){
-		game->camera_.setAcceleration(0.01);
-    }
-    if (key == GLFW_KEY_J){
-        game->camera_.Translate(-game->camera_.GetSide()*trans_factor);
-    }
-    if (key == GLFW_KEY_L){
-        game->camera_.Translate(game->camera_.GetSide()*trans_factor);
-    }
-    if (key == GLFW_KEY_I){
-        game->camera_.Translate(game->camera_.GetUp()*trans_factor);
-    }
-    if (key == GLFW_KEY_K){
-        game->camera_.Translate(-game->camera_.GetUp()*trans_factor);
-    }
-
-
-	//change view setting
-	if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-		if (game->scene_.GetNode("Ship_Body")->getAppear() == true) {
-			game->scene_.GetNode("Ship_Body")->setAppear(false);
-			game->camera_.Translate(game->camera_.GetForward()*view_factor);
-			game->camera_.Translate(-game->camera_.GetUp()*trans_factors);
-			FIRST_VIEW = true;
+		// Create a window and its OpenGL context
+		if (window_full_screen_g) {
+			window_ = glfwCreateWindow(window_width_g, window_height_g, window_title_g.c_str(), glfwGetPrimaryMonitor(), NULL);
 		}
 		else {
-			game->scene_.GetNode("Ship_Body")->setAppear(true); 
-			game->camera_.Translate(-game->camera_.GetForward()*view_factor);
-			game->camera_.Translate(game->camera_.GetUp()*trans_factors);
-			FIRST_VIEW = false;
+			window_ = glfwCreateWindow(window_width_g, window_height_g, window_title_g.c_str(), NULL, NULL);
+		}
+		if (!window_) {
+			glfwTerminate();
+			throw(GameException(std::string("Could not create window")));
+		}
+
+		// Make the window's context the current one
+		glfwMakeContextCurrent(window_);
+
+		// Initialize the GLEW library to access OpenGL extensions
+		// Need to do it after initializing an OpenGL context
+		glewExperimental = GL_TRUE;
+		GLenum err = glewInit();
+		if (err != GLEW_OK) {
+			throw(GameException(std::string("Could not initialize the GLEW library: ") + std::string((const char *)glewGetErrorString(err))));
 		}
 	}
-	if (key == GLFW_KEY_F && action == GLFW_PRESS) {
-		game->fire();
+
+
+	void Game::InitView(void) {
+
+		// Set up z-buffer
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+
+
 	}
 
-}
+
+	void Game::InitEventHandlers(void) {
+
+		// Set event callbacks
+		glfwSetKeyCallback(window_, KeyCallback);
+		glfwSetFramebufferSizeCallback(window_, ResizeCallback);
+
+		// Set pointer to game object, so that callbacks can access it
+		glfwSetWindowUserPointer(window_, (void *)this);
+	}
 
 
-void Game::ResizeCallback(GLFWwindow* window, int width, int height){
-
-    // Set up viewport and camera projection based on new window size
-    glViewport(0, 0, width, height);
-    void* ptr = glfwGetWindowUserPointer(window);
-    Game *game = (Game *) ptr;
-    game->camera_.SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
-}
+	void Game::SetupResources(void) {
 
 
-Game::~Game(){
-    
-    glfwTerminate();
-}
+		// Create a torus
+		resman_.CreateTorus("TorusMesh");
+
+		resman_.Create2Dsquare("2DSquare");
+
+		// Load material to be applied to torus
+		std::string filename = std::string(MATERIAL_DIRECTORY) + std::string("/three-term_shiny_blue");
+		resman_.LoadResource(Material, "ShinyBlueMaterial", filename.c_str());
+
+		// Load texture to be applied to the cube
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/checker.png");
+		resman_.LoadResource(Texture, "Checker", filename.c_str());
+
+		// Load texture to be applied to the turret
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/camouflage.png");
+		resman_.LoadResource(Texture, "Camouflage", filename.c_str());
+		// Load texture to be applied to the turret
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/white.png");
+		resman_.LoadResource(Texture, "White", filename.c_str());
 
 
-Asteroid *Game::CreateAsteroidInstance(std::string entity_name, std::string object_name, std::string material_name){
-
-    // Get resources
-    Resource *geom = resman_.GetResource(object_name);
-    if (!geom){
-        throw(GameException(std::string("Could not find resource \"")+object_name+std::string("\"")));
-    }
-
-    Resource *mat = resman_.GetResource(material_name);
-    if (!mat){
-        throw(GameException(std::string("Could not find resource \"")+material_name+std::string("\"")));
-    }
-    // Create asteroid instance
-    Asteroid *ast = new Asteroid(entity_name, geom, mat);
-    scene_.AddNode(ast);
-    return ast;
-}
+		// Load material to be applied to the cube
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/textured_material");
+		resman_.LoadResource(Material, "TexturedMaterial", filename.c_str());
 
 
-void Game::CreateAsteroidField(int num_asteroids){
+		// Use sphere to better analyze the environment map
+		//resman_.CreateSphere("TorusMesh");
+
+
+
+		// Can also check reflections on a cube
+		std::string cube_filename = std::string(MATERIAL_DIRECTORY) + std::string("/dense_cube.aobj");
+		//resman_.LoadResource(Mesh, "TorusMesh", cube_filename.c_str());
+
+		// Create a cube for the skybox
+		resman_.CreateCube("CubeMesh");
+
+		// Load material to be applied to asteroids
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/material");
+		resman_.LoadResource(Material, "ObjectMaterial", filename.c_str());
+
+		// Create mirror plane
+		resman_.CreateMirror("MirrorMesh");
+
+
+		// Load material to be applied to torus
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/envmap");
+		resman_.LoadResource(Material, "EnvMapMaterial", filename.c_str());
+
+		// Load cube map to be applied to skybox
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox/siege.tga");
+		resman_.LoadResource(CubeMap, "SkyboxCubeMap", filename.c_str());
+
+		// Load material to be applied to skybox
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/skybox");
+		resman_.LoadResource(Material, "SkyboxMaterial", filename.c_str());
+
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/ground.png");
+		resman_.LoadResource(Texture, "Ground", filename.c_str());
+
+		filename = std::string(MATERIAL_DIRECTORY) + std::string("/common_texture_material");
+		resman_.LoadResource(Material, "c_t_material", filename.c_str());
+	}
+
+
+	void Game::SetupScene(void) {
+
+		// Set background color for the scene
+		scene_.SetBackgroundColor(viewport_background_color_g);
+
+		// Set up camera
+		SetUpCamera();
+
+		// Set background color for the scene
+		scene_.SetBackgroundColor(viewport_background_color_g);
+
+
+		
+		// Create an instance of the torus mesh
+		Common *torus = (Common *)CreateCommonInstance("TorusInstance1", "TorusMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
+		// Scale the instance
+		torus->Scale(glm::vec3(2));
+		torus->Translate(glm::vec3(0.0, 0.0, 0.0));
+		torus->SetAngleSpeed(0.02);
+		scene_.AddNode(torus);
+		
+
+		
+		// Create skybox
+		skybox_ = CreateSkyBoxInstance("Skyox1", "CubeMesh", "SkyboxMaterial", "SkyboxCubeMap");
+		skybox_->Scale(glm::vec3(50));
+		//skybox_->Translate(glm::vec3(0.0, 100.0, 0.0));
+		scene_.AddNode(skybox_);
+		
+		
+		// Create a lake
+		Common *lake = CreateCommonInstance("Lake1", "MirrorMesh", "EnvMapMaterial", "", "SkyboxCubeMap");
+		// Scale the instance
+		lake->Scale(glm::vec3(20));
+		lake->Translate(glm::vec3(0.0, -24.8, 0.0));
+		lake->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1.0, 0.0, 0.0)));
+		scene_.AddNode(lake);
+
+		
+		
+		// Create a ground
+		Common * ground = CreateCommonInstance("Ground1", "2DSquare", "c_t_material","Ground");
+		ground->Scale(glm::vec3(500));
+		ground->Translate(glm::vec3(0.0, -25, 0.0));
+		ground->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1.0, 0.0, 0.0)));
+		scene_.AddNode(ground);
+		
+
+		CreateBird();
+		
+	}
+
+	void Game::CreateBird() {
+		resman_.CreatePyramid("Bird_head", 0.44, 0.2, 0.40);
+		resman_.CreateCylinder("Bird_body", 0.20, 0.87);
+		//							float thick, float bot, float top, float height
+		resman_.CreateTrape("Bird_wings", 0.1, 0.46, 0.3, 0.86);
+		resman_.CreateTriangle("Bird_wings_tip", 0.1, 0.3, 0.1, 0.66, false);
+		//							float thick, float bot, float top, float height, bool tip
+		resman_.CreateTriangle("Bird_beak", 0.2, 0.2, 0.03, 0.39, true);
+		resman_.CreateTail("Bird_tail", 0.2, 0.2);
+
+		Common *Body = CreateCommonInstance("Body", "Bird_body", "TexturedMaterial", "White");
+		Body->Scale(glm::vec3(1.0, 1.0, 1.0));
+		Body->Translate(glm::vec3(0.0, 0.0, 0.3));
+		Body->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1, 0, 0)));
+		Body->Rotate(glm::angleAxis(glm::pi<float>() , glm::vec3(0, 0, 1)));
+		//Body->SetParent(camera_);
+		scene_.AddNode(Body);
+
+
+
+		Common *Head = CreateCommonInstance("Head", "Bird_head", "TexturedMaterial", "White");
+		Head->Scale(glm::vec3(1.0, 1.0, 1.0));
+		Head->Translate(glm::vec3(0.30, 0.9, 0.0));
+		scene_.AddNode(Head);
+
+
+		Common *LWing = CreateCommonInstance("LWing", "Bird_wings", "TexturedMaterial", "White");
+		LWing->Scale(glm::vec3(1.0, 1.0, 1.0));
+		glm::quat rotation_LWing = glm::angleAxis(-90 * glm::pi<float>() / 180.0f, glm::vec3(0.0, 0.0, 1.0));
+		LWing->Rotate(rotation_LWing);
+		glm::quat rotation_LWing2 = glm::angleAxis(180 * glm::pi<float>() / 180.0f, glm::vec3(0.0, 1.0, 0.0));
+		LWing->Rotate(rotation_LWing2);
+		LWing->Translate(glm::vec3(0.5, 0.3, 0.0));
+		scene_.AddNode(LWing);
+
+		Common *LWing_tip = CreateCommonInstance("LWing_tip", "Bird_wings_tip", "TexturedMaterial", "White");
+		LWing_tip->Scale(glm::vec3(1.0, 1.0, 1.0));
+		LWing_tip->Translate(glm::vec3(0.16, 0.8, 0.0));
+		scene_.AddNode(LWing_tip);
+
+
+		Common *RWing = CreateCommonInstance("RWing", "Bird_wings", "TexturedMaterial", "White");
+		RWing->Scale(glm::vec3(1.0, 1.0, 1.0));
+		glm::quat rotation_RWing = glm::angleAxis(-90 * -glm::pi<float>() / 180.0f, glm::vec3(0.0, 0.0, 1.0));
+		RWing->Rotate(rotation_RWing);
+		RWing->Translate(glm::vec3(-0.5, 0.3, 0.0));
+		scene_.AddNode(RWing);
+
+		Common *RWing_tip = CreateCommonInstance("LWing_tip", "Bird_wings_tip", "TexturedMaterial", "White");
+		RWing_tip->Scale(glm::vec3(1.0, 1.0, 1.0));
+		glm::quat rotation_RWing_Tip = glm::angleAxis(180 * -glm::pi<float>() / 180.0f, glm::vec3(1.0, 0.0, 0.0));
+		RWing_tip->Rotate(rotation_RWing_Tip);
+		RWing_tip->Translate(glm::vec3(0.16, -1.82, 0.0));
+		scene_.AddNode(RWing_tip);
+
+
+		Common *Beak = CreateCommonInstance("Beak", "Bird_beak", "TexturedMaterial", "White");
+		Beak->Scale(glm::vec3(1.0, 1.0, 1.0));
+		glm::quat rotation_Beak = glm::angleAxis(-90 * glm::pi<float>() / 180.0f, glm::vec3(0.0, 1.0, 0.0));
+		Beak->Rotate(rotation_Beak);
+		Beak->Translate(glm::vec3(0.0, 1.16, 0.37));
+		scene_.AddNode(Beak);
+
+
+		Common *Tail = CreateCommonInstance("Tail", "Bird_tail", "TexturedMaterial", "White");
+		Tail->Scale(glm::vec3(1.0, 1.0, 1.0));
+		glm::quat rotation_Tail = glm::angleAxis(12 * glm::pi<float>() / 180.0f, glm::vec3(1.0, 0.0, 0.0));
+		Tail->Rotate(rotation_Tail);
+		Tail->Translate(glm::vec3(0.0, -0.7, -0.1));
+		scene_.AddNode(Tail);
+
+		Head->SetParent(Body);
+		LWing->SetParent(Body);
+		RWing->SetParent(Body);
+		Beak->SetParent(Body);
+		LWing_tip->SetParent(LWing);
+		RWing_tip->SetParent(LWing);
+		Tail->SetParent(Body);
+
+
+		// Create third Camera
+		int width, height;
+		glfwGetFramebufferSize(window_, &width, &height);
+		glViewport(0, 0, width, height);
+
+		Camera* camera = new Camera();
+		// Set current view
+		camera->SetView(camera_position_g+glm::vec3(-1,3,5), camera_->GetPosition(), camera_->GetCamera()->GetUp());
+		// Set projection
+		camera->SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
+
+		CameraNode* thirdCamera = new CameraNode(camera, "ThirdCamera");
+		scene_.AddNode(thirdCamera);
+
+	}
+
+	void Game::SetUpCamera()
+	{
+		// Set viewport
+		int width, height;
+		glfwGetFramebufferSize(window_, &width, &height);
+		glViewport(0, 0, width, height);
+
+		Camera* camera = new Camera();
+		// Set current view
+		camera->SetView(camera_position_g, camera_look_at_g, camera_up_g);
+		// Set projection
+		camera->SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
+
+		CameraNode *CNode = new CameraNode(camera, "Camera");
+		scene_.AddNode(CNode);
+		camera_ = CNode;
+
+
+	}
+
+	void Game::MainLoop(void) {
+
+		// Loop while the user did not close the window
+		while (!glfwWindowShouldClose(window_)) {
+
+			// remove distoried object
+			std::vector<SceneNode*>::iterator it;
+			std::vector<SceneNode*> list = scene_.GetNodeList();
+			for (it = list.begin(); it != list.end();) {
+				if ((*it)->GetShouldBeDestoried()) { std::cout << (*it)->GetName() << " is removed\n"; it = list.erase(it); }
+				else ++it;
+			}
+			scene_.SetNodeList(list);
+
+			// Animate the scene
+			if (animating_) {
+				static double last_time = 0;
+				double current_time = glfwGetTime();
+				if ((current_time - last_time) > 0.01) {
+					scene_.Update();
+					last_time = current_time;
+					firecooldown = firecooldown - 0.01 <= 0 ? 0 : firecooldown - 0.01;
+
+					// Draw the scene
+					CameraNode * fcNode = (CameraNode *)scene_.GetNode("Camera");
+					CameraNode * tcNode = (CameraNode *)scene_.GetNode("ThirdCamera");
+					if (thirdview) {
+						scene_.Draw(tcNode->GetCamera());
+					}
+					else {
+						scene_.Draw(fcNode->GetCamera());
+					}
+				}
+			}
+
+
+
+			// Push buffer drawn in the background onto the display
+			glfwSwapBuffers(window_);
+
+			// Update other events like input handling
+			glfwPollEvents();
+		}
+	}
+
+
+	void Game::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+
+		// Get user data with a pointer to the game class
+		void* ptr = glfwGetWindowUserPointer(window);
+		Game *game = (Game *)ptr;
+
+		// Quit game if 'q' is pressed
+		if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+			glfwSetWindowShouldClose(window, true);
+		}
+
+		// Stop animation if space bar is pressed
+		if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+			game->animating_ = (game->animating_ == true) ? false : true;
+		}
+
+		if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+			game->thirdview = game->thirdview == true ? false : true;
+		}
+
+		// Fire control
+		if (key == GLFW_KEY_1 && game->firecooldown == 0) {
+			game->firecooldown = game->firegap;
+			game->CreateMissile();
+		}
+
+
+		// View control
+		float rot_factor(glm::pi<float>() / 80);
+		float trans_factor = 1;
+		CameraNode* cNode = (CameraNode *)game->scene_.GetNode("Camera");
+		if (key == GLFW_KEY_UP) {
+			cNode->Pitch(rot_factor);
+		}
+		if (key == GLFW_KEY_DOWN) {
+			cNode->Pitch(-rot_factor);
+		}
+		if (key == GLFW_KEY_LEFT) {
+			cNode->Yaw(rot_factor);
+		}
+		if (key == GLFW_KEY_RIGHT) {
+			cNode->Yaw(-rot_factor);
+		}
+		if (key == GLFW_KEY_S) {
+			cNode->Roll(-rot_factor);
+		}
+		if (key == GLFW_KEY_X) {
+			cNode->Roll(rot_factor);
+		}
+		if (key == GLFW_KEY_A) {
+			cNode->Translate(cNode->GetCamera()->GetForward()*trans_factor);
+			game->skybox_->Translate(cNode->GetCamera()->GetForward()*trans_factor);
+		}
+		if (key == GLFW_KEY_Z) {
+			cNode->Translate(-cNode->GetCamera()->GetForward()*trans_factor);
+			game->skybox_->Translate(-cNode->GetCamera()->GetForward()*trans_factor);
+		}
+		if (key == GLFW_KEY_J) {
+			cNode->Translate(-cNode->GetCamera()->GetSide()*trans_factor);
+			game->skybox_->Translate(-cNode->GetCamera()->GetSide()*trans_factor);
+		}
+		if (key == GLFW_KEY_L) {
+			cNode->Translate(cNode->GetCamera()->GetSide()*trans_factor);
+			game->skybox_->Translate(cNode->GetCamera()->GetSide()*trans_factor);
+		}
+		if (key == GLFW_KEY_I) {
+			cNode->Translate(cNode->GetCamera()->GetUp()*trans_factor);
+			game->skybox_->Translate(cNode->GetCamera()->GetUp()*trans_factor);
+		}
+		if (key == GLFW_KEY_K) {
+			cNode->Translate(-cNode->GetCamera()->GetUp()*trans_factor);
+			game->skybox_->Translate(-cNode->GetCamera()->GetUp()*trans_factor);
+		}
+	}
+
+
+	void Game::ResizeCallback(GLFWwindow* window, int width, int height) {
+
+		// Set up viewport and camera projection based on new window size
+		glViewport(0, 0, width, height);
+		void* ptr = glfwGetWindowUserPointer(window);
+		Game *game = (Game *)ptr;
+
+		CameraNode* cNode = (CameraNode *)game->scene_.GetNode("Camera");
+		cNode->GetCamera()->SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
+
+	}
+
+
+	Game::~Game() {
+
+		glfwTerminate();
+	}
+
+
+
 	
-    // Create a number of asteroid instances
-    for (int i = 0; i < num_asteroids; i++){
-        // Create instance name
-        std::stringstream ss;
-        ss << i;
-        std::string index = ss.str();
-        std::string name = "AsteroidInstance" + index;
+	void Game::CreateMissile()
+	{
+		/*
+		Missile* missile = CreateComInstance("Missile", "SimpleCylinder", "ObjectMaterial");
+		missile->SetRenderState(false);
+		missile->SetLifeTime(0.5);
+		missile->SetScale(glm::vec3(0.05, 1, 0.05));
+		CameraNode* cNode = (CameraNode*)scene_.GetNode("Camera");
+		missile->SetPosition(cNode->GetCamera()->GetPosition() + cNode->GetCamera()->GetForward());
+		missile->SetOrientation(cNode->GetCamera()->GetOrientation());
+		missile->Rotate(glm::normalize(glm::angleAxis(-(float)glm::pi<float>() / 2, glm::vec3(1, 0, 0))));
+		missile->SetForward(glm::vec3(0, 1, 0));
+		missile->SetMaxSpeed(3);
+		missile->SetSpeed(cNode->GetSpeed() + 1);
+		//missile->selectTarget(scene_.GetNodeList());
 
-        // Create asteroid instance
-        Asteroid *ast = CreateAsteroidInstance(name, "SimpleSphereMesh", "ObjectMaterial");
-
-        // Set attributes of asteroid: random position, orientation, and
-        // angular momentum
-        ast->SetPosition(glm::vec3(-300.0 + 600.0*((float) rand() / RAND_MAX), -300.0 + 600.0*((float) rand() / RAND_MAX), 600.0*((float) rand() / RAND_MAX)));
-        ast->SetOrientation(glm::normalize(glm::angleAxis(glm::pi<float>()*((float) rand() / RAND_MAX), glm::vec3(((float) rand() / RAND_MAX), ((float) rand() / RAND_MAX), ((float) rand() / RAND_MAX)))));
-        ast->SetAngM(glm::normalize(glm::angleAxis(0.05f*glm::pi<float>()*((float) rand() / RAND_MAX), glm::vec3(((float) rand() / RAND_MAX), ((float) rand() / RAND_MAX), ((float) rand() / RAND_MAX)))));
-    }
-}
-
-void Game::CreateCameraInstance() {
-
-	// Get resources
-	Resource *geom = resman_.GetResource("SimpleSphereMesh");
-	if (!geom) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleSphereMesh" + std::string("\"")));
+		scene_.AddNode(missile);
+		*/
 	}
 
-	Resource *mat = resman_.GetResource("ObjectMaterial");
-	if (!mat) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
+	ResourceSet Game::CollectSource(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
+		ResourceSet theSet;
+		Resource *geom = resman_.GetResource(object_name);
+		if (!geom) {
+			throw(GameException(std::string("Could not find resource \"") + object_name + std::string("\"")));
+		}
+		theSet.g = geom;
 
-	// Create asteroid instance
-	CameraNode *cam = new CameraNode("Camera", geom, mat);
-	cam->SetCamera(camera_);
-	scene_.SetRoot(cam);
-}
-
-void Game::CreateCanonInstance() {
-	// Get resources
-	//center
-	Resource *geom_C = resman_.GetResource("SimpleCylinderMesh_Center");
-	if (!geom_C) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCylinderMesh_Center" + std::string("\"")));
-	}
-	Resource *mat_C = resman_.GetResource("ObjectMaterial");
-	if (!mat_C) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-	//base
-	Resource *geom_B = resman_.GetResource("SimpleCylinderMesh_Base");
-	if (!geom_B) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCylinderMesh_Base" + std::string("\"")));
-	}
-	Resource *mat_B = resman_.GetResource("ObjectMaterial");
-	if (!mat_B) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-	//canon
-	Resource *geom_CA = resman_.GetResource("SimpleCylinderMesh_Canon");
-	if (!geom_CA) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCylinderMesh_Canon" + std::string("\"")));
-	}
-	Resource *mat_CA = resman_.GetResource("ObjectMaterial");
-	if (!mat_CA) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-	//outcanon
-	Resource *geom_O = resman_.GetResource("SimpleCylinderMesh_Barrel");
-	if (!geom_O) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCylinderMesh_Barrel" + std::string("\"")));
-	}
-	Resource *mat_O = resman_.GetResource("ObjectMaterial");
-	if (!mat_O) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-
-	SceneNode *Center = new SceneNode("Center", geom_C, mat_C);
-	SceneNode *Base = new SceneNode("Base", geom_B, mat_B);
-	SceneNode *Canon = new SceneNode("Canon", geom_CA, mat_CA);
-	SceneNode *Barrel = new SceneNode("Barrel", geom_O, mat_O);
-
-	//set children
-	Base->AddChild(Center);
-	Center->AddChild(Canon);
-	Canon->AddChild(Barrel);
-	//set parent
-	Center->SetParent(Base);
-	Canon->SetParent(Center);
-	Barrel->SetParent(Canon);
-
-	//build up turret
-	Base->SetPosition(glm::vec3(0,0,770));
-	Base->SetOrientation(camera_.GetOrientation());
-	Center->SetPosition(glm::vec3(0, 0.4, 0));
-	Canon->SetPosition(glm::vec3(-0.4,0,0));
-	//Barrel->SetPosition(glm::vec3(0, Barrel_Length,0));
-
-	scene_.AddNode(Base);
-}
-
-void Game::CreateShipInstance() {
-	Resource *geom = resman_.GetResource("SimpleSphereMesh");
-	if (!geom) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleSphereMesh" + std::string("\"")));
-	}
-	Resource *mat = resman_.GetResource("ObjectMaterial");
-	if (!mat) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-	Resource *geom_w = resman_.GetResource("SimpleTorusMesh");
-	if (!geom_w) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleTorusMesh" + std::string("\"")));
-	}
-	Resource *mat_w = resman_.GetResource("ObjectMaterial");
-	if (!mat_w) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-	Resource *geom_c = resman_.GetResource("SimpleCylinderMesh_ShipCanon");
-	if (!geom_c) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCylinderMesh_ShipCanon" + std::string("\"")));
-	}
-	Resource *mat_c = resman_.GetResource("ObjectMaterial");
-	if (!mat_c) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-
-	SceneNode *Ship_Body = new SceneNode("Ship_Body",geom,mat);
-	SceneNode *Ship_LWings = new SceneNode("Ship_Wings", geom_w, mat_w);
-	SceneNode *Ship_RWings = new SceneNode("Ship_Wings", geom_w, mat_w);
-	SceneNode *Ship_Canon = new SceneNode("Ship_Canon", geom_c, mat_c);
-
-	Ship_Body->SetPosition(glm::vec3(0, -2, -15));
-	Ship_Body->SetOrientation(camera_.GetOrientation());
-	Ship_LWings->SetPosition(glm::vec3(-0.9, 0, 0));
-	Ship_RWings->SetPosition(glm::vec3(0.9, 0, 0));
-	Ship_Canon->SetPosition(glm::vec3(0.0, 0, -1));
-	
-	//Rotation of wings
-	float angle = glm::pi<float>() / 2;
-	glm::quat orientation_;
-	glm::quat rotation = glm::angleAxis(angle, camera_.GetSide());
-	orientation_ = rotation * camera_.GetOrientation();
-	orientation_ = glm::normalize(orientation_);
-	Ship_LWings->SetOrientation(orientation_);
-	Ship_RWings->SetOrientation(orientation_);
-	Ship_Canon->SetOrientation(orientation_);
-
-	//set children
-	Ship_Body->AddChild(Ship_LWings);
-	Ship_Body->AddChild(Ship_RWings);
-	Ship_Body->AddChild(Ship_Canon);
-	//set parent
-	Ship_LWings->SetParent(Ship_Body);
-	Ship_RWings->SetParent(Ship_Body);
-	Ship_Canon->SetParent(Ship_Body);
-
-	scene_.AddNode(Ship_Body);
-}
-
-SceneNode *Game::CreateMissileInstance() {
-
-	// Get resources
-	Resource *geom = resman_.GetResource("SimpleCubeMesh");
-	if (!geom) {
-		throw(GameException(std::string("Could not find resource \"") + "SimpleCubeMesh" + std::string("\"")));
-	}
-
-	Resource *mat = resman_.GetResource("ObjectMaterial");
-	if (!mat) {
-		throw(GameException(std::string("Could not find resource \"") + "ObjectMaterial" + std::string("\"")));
-	}
-
-	// Create asteroid instance
-	SceneNode *missile = new SceneNode("Missile", geom, mat);
-	//missile->SetPosition(camera_.GetPosition());
-	if (FIRST_VIEW){ missile->SetTran(camera_.getTransf()); }
-	else{
-		missile->SetTran(camera_.getTransf()); 
-		missile->SetPosition(glm::vec3(0.0, -2, -15));
-	}
-	missile->SetOrientation(camera_.GetOrientation());
-	
-	return missile;
-}
-
-void Game::TurretRotation() {
-	//Turret control
-	
-	scene_.GetNode("Canon")->SetRotation(angle);
-	scene_.GetNode("Barrel")->SetPosition(glm::vec3(0, Barrel_Length, 0));
-	scene_.GetNode("Base")->SetOrientation(orientation);
-}
-
-
-SceneNode *Game::CreateInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
-
-	Resource *geom = resman_.GetResource(object_name);
-	if (!geom) {
-		throw(GameException(std::string("Could not find resource \"") + object_name + std::string("\"")));
-	}
-
-	Resource *mat = resman_.GetResource(material_name);
-	if (!mat) {
-		throw(GameException(std::string("Could not find resource \"") + material_name + std::string("\"")));
-	}
-
-	Resource *tex = NULL;
-	if (texture_name != "") {
-		tex = resman_.GetResource(texture_name);
-		if (!tex) {
+		Resource *mat = resman_.GetResource(material_name);
+		if (!mat) {
 			throw(GameException(std::string("Could not find resource \"") + material_name + std::string("\"")));
 		}
-	}
-
-	Resource *envmap = NULL;
-	if (envmap_name != "") {
-		envmap = resman_.GetResource(envmap_name);
-		if (!envmap) {
-			throw(GameException(std::string("Could not find resource \"") + envmap_name + std::string("\"")));
+		theSet.m = mat;
+		
+		Resource *tex = NULL;
+		if (texture_name != "") {
+			tex = resman_.GetResource(texture_name);
+			if (!tex) {
+				throw(GameException(std::string("Could not find resource \"") + material_name + std::string("\"")));
+			}
 		}
+		theSet.t = tex;
+
+		Resource *envmap = NULL;
+		if (envmap_name != "") {
+			envmap = resman_.GetResource(envmap_name);
+			if (!envmap) {
+				throw(GameException(std::string("Could not find resource \"") + envmap_name + std::string("\"")));
+			}
+		}
+		theSet.e = envmap;
+		return theSet;
 	}
 
-	SceneNode *scn = scene_.CreateNode(entity_name, geom, mat, tex, envmap);
-	return scn;
-}
+	SkyBox* Game::CreateSkyBoxInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
+		ResourceSet theSet = CollectSource(entity_name, object_name, material_name, texture_name, envmap_name);
+
+		SkyBox *scn = new SkyBox(entity_name, theSet.g, theSet.m, theSet.t, theSet.e);
+		return scn;
+	}
+
+	Common* Game::CreateCommonInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
+		ResourceSet theSet = CollectSource(entity_name, object_name, material_name, texture_name, envmap_name);
+		Common *scn = new Common(entity_name, theSet.g, theSet.m, theSet.t, theSet.e);
+		return scn;
+	}
 
 } // namespace game

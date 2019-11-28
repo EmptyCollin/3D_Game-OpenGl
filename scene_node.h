@@ -2,7 +2,7 @@
 #define SCENE_NODE_H_
 
 #include <string>
-#include <vector>
+#include <iostream>
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -24,31 +24,52 @@ namespace game {
 
             // Destructor
             ~SceneNode();
-            
+
             // Get name of node
-            const std::string GetName(void) const;
+            std::string GetName(void);
+			void SetName(std::string n) { name_ = n; }
 
             // Get node attributes
-            glm::vec3 GetPosition(void) const;
-            glm::quat GetOrientation(void) const;
-            glm::vec3 GetScale(void) const;
+			virtual glm::vec3 GetPosition(void) const;
+			virtual glm::quat GetOrientation(void) const;
+			float GetSpeed() { return speed; }
+			float GetAcceleration() { return acceleration_; }
+			float GetMaxSpeed() { return maxSpeed; }
+			float GetFictionFactor() { return fictionFactor; }
+			glm::vec3 GetScale(void) const;
+			glm::mat4 GetTransFMat();
+			glm::vec3 GetOrigin() { return rotOrigin; }
+			SceneNode* GetParent() { return parent; }
+			glm::vec3 GetForward() { return forward_; }
 
             // Set node attributes
-            void SetPosition(glm::vec3 position);
-            void SetOrientation(glm::quat orientation);
-            void SetScale(glm::vec3 scale);
-            
+			virtual void SetPosition(glm::vec3 position);
+			virtual void SetOrientation(glm::quat orientation);
+			void SetSpeed(float s) { speed = s; }
+			void SetAcceleration(float a) { acceleration_ = a; }
+			void SetMaxSpeed(float ms) { maxSpeed = ms; }
+			void SetFictionFactor(float ff) { fictionFactor = ff; }
+			void SetScale(glm::vec3 scale);
+			void SetTransMatrix(glm::mat4 tm) { transfMatrix = tm; }
+			void SetOrigin(glm::vec3 o) { rotOrigin = o; }
+			void SetParent(SceneNode* p) { parent = p; }
+			void SetForward(glm::vec3 f) { forward_ = f; }
+
+
             // Perform transformations on node
-            void Translate(glm::vec3 trans);
-            void Rotate(glm::quat rot);
-            void Scale(glm::vec3 scale);
+			virtual void Translate(glm::vec3 trans);
+			virtual void Rotate(glm::quat rot);
+			void Scale(glm::vec3 scale);
 
             // Draw the node according to scene parameters in 'camera'
             // variable
             virtual void Draw(Camera *camera);
 
+			void UpdateNodeInfo(void);
+
             // Update the node
-            virtual void Update(void);
+			virtual void Update(void) {};
+
 
             // OpenGL variables
             GLenum GetMode(void) const;
@@ -57,28 +78,18 @@ namespace game {
             GLsizei GetSize(void) const;
             GLuint GetMaterial(void) const;
 
-			void SetParent(SceneNode *P) { parent = P; }
-			void AddChild(SceneNode *C) { children.push_back(C); }
-			SceneNode* GetParent() { return parent; }
-			std::vector<SceneNode*> GetChildren() { return children; }
+			// life time and destroy
+			bool GetShouldBeDestoried() { return shouldBeDestoried; }
+			bool GetRenderState() { return constRender; }
+			float GetLifeTime() { return lifeTime; }
+			float GetRenderTime() { return renderTime; }
 
-			glm::mat4 getTran() { return TransferMatrix; }
-			void SetTran(glm::mat4 Tr) { TransferMatrix = Tr; }
-			SceneNode *findIt(std::string node_name);
+			void SetShouldBeDestoried(bool sb) { shouldBeDestoried = sb; }
+			void SetRenderState(bool rs) { constRender = rs; }
+			void SetLifeTime(float lt) { lifeTime = lt; }
+			void SetRenderTiem(float rt) { renderTime = rt; }
 
-			void SetRotation(float r) { Rotation = r; }
-
-			bool getAppear() { return appear; }
-			void setAppear(bool a) { appear = a; }
-
-			float getVel() { return vel; }
-
-			void setLive(bool l) { live = l; }
-			void setLiveTime(float lt) { liveTime = lt; }
-
-			bool getLive() { return live; }
-
-        private:
+        protected:
 			GLuint texture_; // Reference to texture resource
 			GLuint envmap_; // Reference to environment map
 			bool blending_; // Draw with blending or not
@@ -92,26 +103,33 @@ namespace game {
             glm::vec3 position_; // Position of node
             glm::quat orientation_; // Orientation of node
             glm::vec3 scale_; // Scale of node
-
-			glm::mat4 TransferMatrix = glm::mat4(1.0);
+			glm::vec3 rotOrigin = glm::vec3(0); // the position of rotation origin
+			float speed = 0;	// velocity of node
+			float acceleration_ = 0; // acceleration of node
+			float maxSpeed = 1.5;	// max speed of general object if not specified
+			float fictionFactor = 0.01; // fiction force of general object if not specified
 
             // Set matrices that transform the node in a shader program
             void SetupShader(GLuint program,Camera* camera);
 
-			SceneNode *parent;
-			std::vector<SceneNode*> children;
 
-			//Special variable for canon
-			float Rotation;
+			// matrixs for transform
+			glm::mat4 transfMatrix = glm::mat4(1.0);
+			glm::mat4 scalingMatrix = glm::mat4(1.0);
 
-			//Special variable for ship
-			bool appear = true;
+			// parent 
+			SceneNode* parent = NULL;
+					   			
+			// intial direction
+			glm::vec3 forward_ = glm::vec3(0, 0, -1);
+			glm::vec3 side_ = glm::vec3(1, 0, 0);
+			glm::vec3 up_ = glm::vec3(0, 1, 0);
+			
 
-			//Special variable for missile
-			float vel = 5.0;
-
-			float liveTime = 5000;
-			bool live = true;
+			bool shouldBeDestoried = false; // if this object should be destoried
+			bool constRender = true;
+			float lifeTime = 0;
+			float renderTime = 0; // the time of object has been rendered
 
     }; // class SceneNode
 

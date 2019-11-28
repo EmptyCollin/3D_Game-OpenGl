@@ -5,7 +5,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <glm/gtx/string_cast.hpp>
 #include "scene_graph.h"
 
 namespace game {
@@ -32,54 +32,48 @@ glm::vec3 SceneGraph::GetBackgroundColor(void) const {
 }
  
 
-SceneNode *SceneGraph::CreateNode(std::string node_name, Resource *geometry, Resource *material, Resource *texture, Resource *envmap) {
+SceneNode *SceneGraph::CreateNode(std::string node_name, Resource *geometry, Resource *material){
 
-	// Create scene node with the specified resources
-	SceneNode *scn = new SceneNode(node_name, geometry, material, texture, envmap);
+    // Create scene node with the specified resources
+    SceneNode *scn = new SceneNode(node_name, geometry, material);
 
-	// Add node to the scene
-	node_.push_back(scn);
+    // Add node to the scene
+	AddNode(scn);
 
-	return scn;
+    return scn;
+}
+
+void SceneGraph::AddNode(SceneNode *node) {
+	hieNodeList.push_back(node);
+	return;
 }
 
 
-void SceneGraph::AddNode(SceneNode *node){
-	node->SetParent(root);
-	root->AddChild(node);
-}
-
-
-SceneNode *SceneGraph::GetNode(std::string node_name) {
+SceneNode* SceneGraph::GetNode(std::string node_name){
 
     // Find node with the specified name
-    for (int i = 0; i < root->GetChildren().size(); i++){
-        if (root->GetChildren()[i]->GetName() == node_name){
-            return root->GetChildren()[i];
-        }
-		if (root->GetChildren()[i]->GetChildren().size() > 0) {
-			SceneNode* a = root->GetChildren()[i];
-			SceneNode* b = a->findIt(node_name);
-			if (b != NULL) { return b; };
-		}
+    for (int i = 0; i < hieNodeList.size(); i++){
+		if (hieNodeList[i]->GetName() == node_name) {
+				return hieNodeList[i];
+			}
     }
+	std::cout << node_name << " not found" << std::endl;
     return NULL;
-
 }
 
 
+/*
+std::vector<std::vector<SceneNode *>>::const_iterator SceneGraph::begin() const {
 
-std::vector<SceneNode *>::const_iterator SceneGraph::begin() const {
-
-    return root->GetChildren().begin();
+    return node_.begin();
 }
 
 
 std::vector<SceneNode *>::const_iterator SceneGraph::end() const {
 
-    return root->GetChildren().end();
+    return node_.end();
 }
-
+*/
 
 void SceneGraph::Draw(Camera *camera){
 
@@ -88,19 +82,39 @@ void SceneGraph::Draw(Camera *camera){
                  background_color_[1],
                  background_color_[2], 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//std::cout << root->GetChildren().size();
+	/*
+	for (int i = 0; i < hieNodeList.size(); i++) {
+		hieNodeList[i]->Draw(camera);
+	}
+	*/
+
     // Draw all scene nodes
-    for (int i = 0; i < root->GetChildren().size(); i++){	
-		root->GetChildren()[i]->Draw(camera);		
-    }
+	bool thirdview = camera->GetCameraName() == "ThirdCamera" ? true : false;
+	if (thirdview) {
+		for (int i = 0; i < hieNodeList.size(); i++) {
+			hieNodeList[i]->Draw(camera);
+		}
+	}
+	else {
+		for (int i = 0; i < hieNodeList.size(); i++) {
+			if (hieNodeList[i]->GetName() == "Body" || hieNodeList[i]->GetName() == "Head" || hieNodeList[i]->GetName() == "Beak" || 
+				hieNodeList[i]->GetName() == "LWing" || hieNodeList[i]->GetName() == "LWing_tip" ||
+				hieNodeList[i]->GetName() == "RWing" || hieNodeList[i]->GetName() == "RWing_tip") {
+				continue;
+			}
+			hieNodeList[i]->Draw(camera);
+		}
+	}
+
+
 }
 
 
 void SceneGraph::Update(void){
 
-    for (int i = 0; i < root->GetChildren().size(); i++){
-		root->GetChildren()[i]->Update();
-    }
+	for (int i = 0; i < hieNodeList.size(); i++) {
+		hieNodeList[i]->Update();
+	}
 }
 
 } // namespace game

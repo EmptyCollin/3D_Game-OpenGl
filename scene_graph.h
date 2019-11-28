@@ -9,8 +9,10 @@
 
 #include "scene_node.h"
 #include "resource.h"
+#include "missile.h"
 #include "camera.h"
-
+#include "SkyBox.h"
+#include "common.h"
 namespace game {
 
     // Class that manages all the objects in a scene
@@ -20,12 +22,9 @@ namespace game {
             // Background color
             glm::vec3 background_color_;
 
-            //Scene nodes to render
-            std::vector<SceneNode *> node_;
-
-			SceneNode *root;
-
-			
+            // Scene nodes to render
+            //std::vector<SceneNode *> node_;
+			std::vector<SceneNode*> hieNodeList;
 
         public:
             // Constructor and destructor
@@ -37,14 +36,12 @@ namespace game {
             glm::vec3 GetBackgroundColor(void) const;
             
             // Create a scene node from the specified resources
-			SceneNode *CreateNode(std::string node_name, Resource *geometry, Resource *material, Resource *texture = NULL, Resource *envmap = NULL);
+            SceneNode *CreateNode(std::string node_name, Resource *geometry, Resource *material);
+
             // Add an already-created node
-            void AddNode(SceneNode *node);
-            // Find a scene node with a specific name
-            SceneNode *GetNode(std::string node_name);
-            // Get node const iterator
-            std::vector<SceneNode *>::const_iterator begin() const;
-            std::vector<SceneNode *>::const_iterator end() const;
+			void AddNode(SceneNode *node);
+			// Find a list of nodes with a specific name
+			SceneNode* GetNode(std::string node_name);
 
             // Draw the entire scene
             void Draw(Camera *camera);
@@ -52,8 +49,9 @@ namespace game {
             // Update entire scene
             void Update(void);
 
-			void SetRoot(SceneNode *r) { root = r; }
-			SceneNode *getRoot() { return root; }
+			// Get Node list
+			std::vector<SceneNode*> GetNodeList() { return hieNodeList; }
+			void SetNodeList(std::vector<SceneNode*> n) { hieNodeList = n; }
 
     }; // class SceneGraph
 

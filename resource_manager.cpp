@@ -567,6 +567,39 @@ void ResourceManager::CreateCube(std::string object_name) {
 	AddResource(Mesh, object_name, vbo, ebo, sizeof(face) / sizeof(GLfloat));
 }
 
+void ResourceManager::Create2Dsquare(std::string object_name)
+// Create the geometry of a square with sides of length 1 centered at (0, 0, 0) and facing (0, 0, 1)
+{
+
+	// The construction does *not* use shared vertices
+	// 9 attributes per vertex: 3D position (3), 3D normal (3), RGB color (3) , uv (2)
+	GLfloat vertex[] = {
+		-0.5,  0.5,  0.0,    0.0,  0.0,  1.0,    0.0, 1.0, 1.0,		0, 0,
+		-0.5, -0.5,  0.0,    0.0,  0.0,  1.0,    1.0, 0.0, 0.0,		0, 1,
+		 0.5, -0.5,  0.0,    0.0,  0.0,  1.0,    0.0, 1.0, 0.0,		1, 1,
+		 0.5,  0.5,  0.0,    0.0,  0.0,  1.0,    0.0, 0.0, 1.0,		1, 0,
+	};
+	GLuint face[] = {
+		0,1,2,
+		0,2,3,
+	};
+
+	
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 11 * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * 3 * sizeof(GLuint), face, GL_STATIC_DRAW);
+	
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, 2 * 3);
+	
+}
+
+
 void ResourceManager::CreateMirror(std::string object_name)
 {
 	int segment_num = 800;
@@ -586,7 +619,7 @@ void ResourceManager::CreateMirror(std::string object_name)
 		throw e;
 	}
 
-	float theta = 2.0*glm::pi<GLfloat>() / segment_num;
+	float theta = 2.0*glm::pi<GLfloat>() / (segment_num-1);
 
 	// origin
 	vertex[segment_num * vertex_att + 0] = 0.0;
@@ -605,7 +638,7 @@ void ResourceManager::CreateMirror(std::string object_name)
 	int dir = 1;	// radius inrease(1) or decrease(1)
 	float delta = 0.01;
 	int count = 1;	// count the time of increasing(>0) or decreasing(<0) 
-	for (int i = 1; i <= segment_num;i++) {
+	for (int i = 0; i <= segment_num;i++) {
 		if (i % 4 == 0) {
 			if ((segment_num - i) / 4 <= abs(count)) {
 				dir = count > 0 ? -1 : 1;
@@ -627,7 +660,11 @@ void ResourceManager::CreateMirror(std::string object_name)
 		vertex[i*vertex_att + 8] = 0.0;
 		vertex[i*vertex_att + 9] = 0.0;
 		vertex[i*vertex_att + 10] = 0.0;
-		printf("vertex{%d}:%f,%f\n", i, vertex[i*vertex_att + 0], vertex[i*vertex_att + 1]);
+	}
+
+
+	for (int i = 0; i < vertex_num; i++) {
+		printf("%d: %f,%f,%f\n", i, vertex[i*vertex_att + 0], vertex[i*vertex_att + i], vertex[i*vertex_att + 2]);
 	}
 
 	// Create triangles
@@ -657,6 +694,234 @@ void ResourceManager::CreateMirror(std::string object_name)
 	// Create resource
 	AddResource(Mesh, object_name, vbo, ebo, face_num * face_att);
 
+}
+
+void ResourceManager::CreatePyramid(std::string object_name, float bot, float top, float height) {
+
+
+	// Number of attributes for vertices and faces
+	const int vertex_att = 11;
+	const int face_att = 3;
+
+	float half_thick = bot / 2;
+	float top_x = (bot - top) / 2;
+	float bot_uv = bot / (2 * height + top);
+	float height_uv_zhen = height / (2 * height + top);
+	float height_uv_fan = (height + top) / (2 * height + top);
+
+	// Data buffers 
+	GLfloat vertex[] = {
+		//position												normal			color			uv
+		//front
+		-0.5,-0.5,half_thick,									0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,bot_uv,//bot left
+		-0.5 + bot,-0.5,half_thick,								0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,0.0,//bot right
+		-0.5 + top_x + top,-0.5 + height,top / 2,		0.0,0.0,0.0,	0.5,0.5,0.5,	height_uv_zhen,top_x / bot,//top right
+		-0.5 + top_x,-0.5 + height,top / 2,			0.0,0.0,0.0,	0.5,0.5,0.5,	height_uv_zhen,(top_x + top) / bot,//top left
+				//back
+		-0.5,-0.5,-half_thick,									0.0,0.0,0.0,	0.5,0.5,0.5,	1,bot_uv,//bot left
+		-0.5 + bot,-0.5,-half_thick,							0.0,0.0,0.0,	0.5,0.5,0.5,	1.0,0.0,//bot right
+		-0.5 + bot - top_x,-0.5 + height,-top / 2,	0.0,0.0,0.0,	0.5,0.5,0.5,	height_uv_fan,top_x / bot,//top right
+		-0.5 + top_x,-0.5 + height,-top / 2,			0.0,0.0,0.0,	0.5,0.5,0.5,	height_uv_fan,(top_x + top) / bot,//top left
+
+	};
+
+	GLuint face[] = {
+		3,0,1,
+		1,2,3,
+		6,5,4,
+		4,7,6,
+		6,7,3,
+		3,2,6,
+		3,7,4,
+		4,0,3,
+		6,2,1,
+		1,5,6,
+		0,4,5,
+		5,1,0,
+	};
+
+
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 8 * vertex_att * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 12 * face_att * sizeof(GLuint), face, GL_STATIC_DRAW);
+
+
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, 12 * face_att);
+}
+
+// Bird big wingsq
+void ResourceManager::CreateTrape(std::string object_name, float thick, float bot, float top, float height) {
+
+
+	// Number of attributes for vertices and faces
+	const int vertex_att = 11;
+	const int face_att = 3;
+
+	float half_thick = thick / 2;
+
+	// Data buffers 
+	GLfloat vertex[] = {
+		//position								normal			color			uv
+		//front
+		-0.5,-0.5,half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,0.0,//bot left
+		-0.5 + bot,-0.5,half_thick,			0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),0.0,//bot right
+		-0.5 + bot,-0.5 + height,half_thick,	0.0,0.0,0.0,	0.5,0.5,0.5,	1.0,1.0,//top right
+		-0.5 + bot - top,-0.5 + height,half_thick,		0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),1.0,//top left
+		//back
+		-0.5,-0.5,-half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,0.0,//bot left
+		-0.5 + bot,-0.5,-half_thick,			0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),0.0,//bot right
+		-0.5 + bot,-0.5 + height,-half_thick,	0.0,0.0,0.0,	0.5,0.5,0.5,	1.0,1.0,//top right
+		-0.5 + bot - top,-0.5 + height,-half_thick,		0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),1.0,//top left
+
+	};
+
+	GLuint face[] = {
+		0,1,3,
+		3,2,1,
+		7,5,4,
+		7,6,5,
+		0,3,4,
+		3,7,4,
+		6,7,3,
+		3,2,6,
+		6,5,1,
+		1,2,6,
+		4,5,1,
+		1,0,4,
+	};
+
+
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 8 * vertex_att * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 12 * face_att * sizeof(GLuint), face, GL_STATIC_DRAW);
+
+
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, 12 * face_att);
+}
+
+
+// Bird wings and tail and mouse
+void ResourceManager::CreateTriangle(std::string object_name, float thick, float bot, float top, float height, bool tip) {
+
+
+	// Number of attributes for vertices and faces
+	const int vertex_att = 11;
+	const int face_att = 3;
+
+	float half_thick = thick / 2;
+
+	float tip_orNot = 0;
+	if (tip) {
+		tip_orNot = top / 2;
+	}
+	else {
+		tip_orNot = half_thick;
+	}
+
+	// Data buffers 
+	GLfloat vertex[] = {
+		//position								normal			color			uv
+		//front
+		-0.5,-0.5,half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,0.0,//bot left
+		-0.5 + bot,-0.5,half_thick,			0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),0.0,//bot right
+		-0.5 + bot + top,-0.5 + height,tip_orNot,		0.0,0.0,0.0,	0.5,0.5,0.5,	1.0,1.0,//top right
+		-0.5 + bot,-0.5 + height,tip_orNot,			0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),1.0,//top left
+		//back
+		-0.5,-0.5,-half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.0,0.0,//bot left
+		-0.5 + bot,-0.5,-half_thick,			0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),0.0,//bot right
+		-0.5 + bot + top,-0.5 + height,-tip_orNot,	0.0,0.0,0.0,	0.5,0.5,0.5,	1.0,1.0,//top right
+		-0.5 + bot,-0.5 + height,-tip_orNot,		0.0,0.0,0.0,	0.5,0.5,0.5,	bot / (bot + top),1.0,//top left
+
+	};
+
+	GLuint face[] = {
+		0,1,3,
+		3,2,1,
+		7,5,4,
+		7,6,5,
+		0,3,4,
+		3,7,4,
+		6,7,3,
+		3,2,6,
+		6,5,1,
+		1,2,6,
+		4,5,1,
+		1,0,4,
+	};
+
+
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 8 * vertex_att * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 12 * face_att * sizeof(GLuint), face, GL_STATIC_DRAW);
+
+
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, 12 * face_att);
+}
+
+void ResourceManager::CreateTail(const std::string object_name, float tail_diff, float thick) {
+
+	// Number of attributes for vertices and faces
+	const int vertex_att = 11;
+	const int face_att = 3;
+
+	float half_thick = thick / 2;
+
+	// Data buffers 
+	GLfloat vertex[] = {
+		//position							normal			color			uv
+		//top 2 point
+		0,0.5,half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+		0,0.5,-half_thick,					0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+		//bot 4 point
+		-1.5*tail_diff, 0.4 - 2 * tail_diff, 0,	0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+		-0.5*tail_diff, 0.4 - 2.5 * tail_diff, 0,	0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+		0.5*tail_diff, 0.4 - 2.5 * tail_diff, 0,	0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+		1.5*tail_diff, 0.4 - 2 * tail_diff, 0,	0.0,0.0,0.0,	0.5,0.5,0.5,	0.5,0.5,
+
+	};
+
+	GLuint face[] = {
+		0,2,3,
+		0,3,4,
+		0,4,5,
+		1,2,3,
+		1,3,4,
+		1,4,5,
+		0,1,2,
+		1,0,5,
+	};
+
+
+	GLuint vbo, ebo;
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, 6 * vertex_att * sizeof(GLfloat), vertex, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &ebo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 8 * face_att * sizeof(GLuint), face, GL_STATIC_DRAW);
+
+
+	// Create resource
+	AddResource(Mesh, object_name, vbo, ebo, 12 * face_att);
 }
 
 void ResourceManager::CreateTorus(std::string object_name, float loop_radius, float circle_radius, int num_loop_samples, int num_circle_samples){

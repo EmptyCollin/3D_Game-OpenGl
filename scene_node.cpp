@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <time.h>
-#include <glm/gtx/string_cast.hpp>
+
 #include "scene_node.h"
 
 namespace game {
@@ -15,27 +15,30 @@ namespace game {
 		name_ = name;
 
 		// Set geometry
-		if (geometry->GetType() == PointSet) {
-			mode_ = GL_POINTS;
-		}
-		else if (geometry->GetType() == Mesh) {
-			mode_ = GL_TRIANGLES;
-		}
-		else {
-			throw(std::invalid_argument(std::string("Invalid type of geometry")));
-		}
-
-		array_buffer_ = geometry->GetArrayBuffer();
-		element_array_buffer_ = geometry->GetElementArrayBuffer();
-		size_ = geometry->GetSize();
-
-		// Set material (shader program)
-		if (material->GetType() != Material) {
-			throw(std::invalid_argument(std::string("Invalid type of material")));
+		if (geometry) {
+			if (geometry->GetType() == PointSet) {
+				mode_ = GL_POINTS;
+			}
+			else if (geometry->GetType() == Mesh) {
+				mode_ = GL_TRIANGLES;
+			}
+			else {
+				throw(std::invalid_argument(std::string("Invalid type of geometry")));
+			}
+			array_buffer_ = geometry->GetArrayBuffer();
+			element_array_buffer_ = geometry->GetElementArrayBuffer();
+			size_ = geometry->GetSize();
 		}
 
-		material_ = material->GetResource();
+		if (material) {
+			// Set material (shader program)
+			if (material->GetType() != Material) {
+				throw(std::invalid_argument(std::string("Invalid type of material")));
+			}
 
+			material_ = material->GetResource();
+		}
+					   
 		// Set texture
 		if (texture) {
 			texture_ = texture->GetResource();
@@ -57,11 +60,12 @@ namespace game {
 		blending_ = false;
 	}
 
+
 SceneNode::~SceneNode(){
 }
 
 
-const std::string SceneNode::GetName(void) const {
+std::string SceneNode::GetName(void) {
 
     return name_;
 }
@@ -82,6 +86,11 @@ glm::quat SceneNode::GetOrientation(void) const {
 glm::vec3 SceneNode::GetScale(void) const {
 
     return scale_;
+}
+
+glm::mat4 SceneNode::GetTransFMat()
+{
+	return transfMatrix;
 }
 
 
@@ -151,72 +160,74 @@ GLuint SceneNode::GetMaterial(void) const {
     return material_;
 }
 
-SceneNode *SceneNode::findIt(std::string node_name) {
-	// Find node with the specified name
-	for (int i = 0; i < children.size(); i++) {
-		if (children[i]->GetName() == node_name) {
-			return children[i];
-		}
-		if (children[i]->GetChildren().size() > 0) {
-			SceneNode *a = children[i]->findIt(node_name);
-			if (a != NULL) { return a; }
-		}
-	}
-	return NULL;
-}
 
 void SceneNode::Draw(Camera *camera){
 
-	if (appear) {
-		// Select blending or not
-		if (blending_) {
-			// Disable z-buffer
-			glDisable(GL_DEPTH_TEST);
+	if (blending_) {
+		// Disable z-buffer
+		glDisable(GL_DEPTH_TEST);
 
-			// Enable blending
-			glEnable(GL_BLEND);
-			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Simpler form
-			glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
-		}
-		else {
-			// Enable z-buffer
-			glEnable(GL_DEPTH_TEST);
-			glDepthFunc(GL_LESS);
-		}
-
-		// Select proper material (shader program)
-		glUseProgram(material_);
-
-		// Set geometry to draw
-		glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
-
-		// Set globals for camera
-		camera->SetupShader(material_);
-
-		// Set world matrix and other shader input variables
-		SetupShader(material_, camera);
-
-		// Draw geometry
-		if (mode_ == GL_POINTS) {
-			glDrawArrays(mode_, 0, size_);
-		}
-		else {
-			glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
-		}
-
-		for (int i = 0; i < children.size(); i += 1) {
-			children[i]->Draw(camera);
-		}
+		// Enable blending
+		glEnable(GL_BLEND);
+		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Simpler form
+		glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBlendEquationSeparate(GL_FUNC_ADD, GL_MAX);
 	}
-	
+	else {
+		// Enable z-buffer
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
+	}
+
+	// Select proper material (shader program)
+	glUseProgram(material_);
+
+	// Set geometry to draw
+	glBindBuffer(GL_ARRAY_BUFFER, array_buffer_);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_array_buffer_);
+
+	// Set globals for camera
+	camera->SetupShader(material_);
+
+	// Set world matrix and other shader input variables
+	SetupShader(material_,camera);
+
+	// Draw geometry
+	if (mode_ == GL_POINTS) {
+		glDrawArrays(mode_, 0, size_);
+	}
+	else {
+		glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
+	}
 }
 
 
-void SceneNode::Update(void){
+void SceneNode::UpdateNodeInfo(void){
 
-   
+	if (!constRender) { 
+		renderTime += 0.01; 
+		if (renderTime >= lifeTime)shouldBeDestoried = true;
+	}
+	
+	speed = speed + acceleration_ > maxSpeed ?
+		maxSpeed : speed + acceleration_;
+	
+	if (acceleration_ <= 0) {
+		speed = speed > fictionFactor ?
+			speed - fictionFactor : 0;
+	}
+	glm::vec3 velocity = speed * glm::normalize(orientation_*forward_);
+	position_ += velocity;
+
+	scalingMatrix = glm::scale(glm::mat4(1.0), scale_);
+	glm::mat4 rotation = glm::mat4_cast(orientation_);
+	glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
+	glm::mat4 origin = glm::translate(glm::mat4(1.0), -rotOrigin);
+	
+	if (parent == NULL) { transfMatrix = translation * rotation * origin; }
+	else { transfMatrix = (parent->GetTransFMat()) *  translation *  rotation * origin; }
+
+	
 }
 
 
@@ -238,33 +249,16 @@ void SceneNode::SetupShader(GLuint program, Camera* camera){
     GLint tex_att = glGetAttribLocation(program, "uv");
     glVertexAttribPointer(tex_att, 2, GL_FLOAT, GL_FALSE, 11*sizeof(GLfloat), (void *) (9*sizeof(GLfloat)));
     glEnableVertexAttribArray(tex_att);
-	
-	glm::mat4 transf;
 
-	// World transformation
-	glm::mat4 scaling = glm::scale(glm::mat4(1.0), scale_);
-	glm::mat4 rotation = glm::mat4_cast(orientation_);
-	glm::mat4 translation = glm::translate(glm::mat4(1.0), position_);
 
-	if (parent && parent->GetName() != "Camera") {
-		transf = parent->getTran() * translation * rotation * scaling;
-		if (name_ == "Canon") { transf = glm::rotate(transf, Rotation, glm::vec3(0.0, 0.0, 1.0)); }
-		TransferMatrix = transf;	
-	}
-	else if (name_ == "Ship_Body") {
-		transf = parent->getTran() * translation * rotation * scaling;
-		TransferMatrix = transf;
-	}
-	else if (name_ == "Missile") {
-		transf = TransferMatrix * translation;
-	}
-	else {
-		transf = translation * rotation * scaling;
-		TransferMatrix = transf;
-	}
-	
-    GLint world_mat = glGetUniformLocation(program, "world_mat");
-    glUniformMatrix4fv(world_mat, 1, GL_FALSE, glm::value_ptr(transf));
+
+    // World transformation
+    
+
+    glm::mat4 transf = transfMatrix  * scalingMatrix;
+
+	GLint world_mat = glGetUniformLocation(program, "world_mat");
+	glUniformMatrix4fv(world_mat, 1, GL_FALSE, glm::value_ptr(transf));
 
 
 	// Normal matrix
@@ -301,15 +295,10 @@ void SceneNode::SetupShader(GLuint program, Camera* camera){
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
 
-    // Timer
-    GLint timer_var = glGetUniformLocation(program, "timer");
-    double current_time = glfwGetTime();
-    glUniform1f(timer_var, (float) current_time);
-}
-
-glm::mat4 Camera::GetCurrentViewMatrix(void) {
-
-	return view_matrix_;
+	// Timer
+	GLint timer_var = glGetUniformLocation(program, "timer");
+	double current_time = glfwGetTime();
+	glUniform1f(timer_var, (float)current_time);
 }
 
 } // namespace game;

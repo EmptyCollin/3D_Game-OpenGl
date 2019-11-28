@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
 # Name of project
-set(PROJ_NAME "Matrix Hell")
+set(PROJ_NAME "Matrix_Hell")
 project(${PROJ_NAME})
 
 # Specify project files: header files and source files
@@ -15,15 +15,6 @@ set(HDRS
  
 set(SRCS
    ${SRC_LIST} ${GLS_LIST}
-)
-
-# Specify project files: header files and source files
-set(HDRS
-    asteroid.h camera.h game.h resource.h resource_manager.h scene_graph.h scene_node.h CameraNode.h
-)
- 
-set(SRCS
-   asteroid.cpp camera.cpp game.cpp main.cpp resource.cpp resource_manager.cpp scene_graph.cpp scene_node.cpp CameraNode.cpp material_vp.glsl material_fp.glsl 
 )
 
 # Add path name to configuration file
