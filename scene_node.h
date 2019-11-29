@@ -7,6 +7,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#include <vector>
 #define GLM_FORCE_RADIANS
 #include <glm/gtc/quaternion.hpp>
 
@@ -22,7 +23,9 @@ namespace game {
             // Create scene node from given resources
 			SceneNode(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture = NULL, const Resource *envmap = NULL);
 
-            // Destructor
+			SceneNode * FindIt(std::string node_name);
+
+			// Destructor
             ~SceneNode();
 
             // Get name of node
@@ -40,6 +43,7 @@ namespace game {
 			glm::mat4 GetTransFMat();
 			glm::vec3 GetOrigin() { return rotOrigin; }
 			SceneNode* GetParent() { return parent; }
+			std::vector <SceneNode*> * GetChildren() { return children; }
 			glm::vec3 GetForward() { return forward_; }
 
             // Set node attributes
@@ -52,7 +56,8 @@ namespace game {
 			void SetScale(glm::vec3 scale);
 			void SetTransMatrix(glm::mat4 tm) { transfMatrix = tm; }
 			void SetOrigin(glm::vec3 o) { rotOrigin = o; }
-			void SetParent(SceneNode* p) { parent = p; }
+			void SetParent(SceneNode* p);
+			void AddChild(SceneNode *c);
 			void SetForward(glm::vec3 f) { forward_ = f; }
 
 
@@ -64,6 +69,7 @@ namespace game {
             // Draw the node according to scene parameters in 'camera'
             // variable
             virtual void Draw(Camera *camera);
+
 
 			void UpdateNodeInfo(void);
 
@@ -119,6 +125,7 @@ namespace game {
 
 			// parent 
 			SceneNode* parent = NULL;
+			std::vector<SceneNode*> * children;
 					   			
 			// intial direction
 			glm::vec3 forward_ = glm::vec3(0, 0, -1);
@@ -127,7 +134,7 @@ namespace game {
 			
 
 			bool shouldBeDestoried = false; // if this object should be destoried
-			bool constRender = true;
+			bool constRender = true ;
 			float lifeTime = 0;
 			float renderTime = 0; // the time of object has been rendered
 

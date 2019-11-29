@@ -42,7 +42,7 @@ namespace game {
             // Create the geometry for a sphere
             void CreateSphere(std::string object_name, float radius = 0.6, int num_samples_theta = 90, int num_samples_phi = 45);
 
-			void CreateCylinder(std::string object_name, float radius, float height);
+			void CreateCylinder(std::string object_name, float radius = 0.6, float height = 1);
 
 			void CreateCube(std::string object_name, float side_length);
 

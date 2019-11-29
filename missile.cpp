@@ -1,7 +1,7 @@
 #include "missile.h"
 
 namespace game {
-	Missile::Missile(const std::string name, const Resource *geometry, const Resource *material):SceneNode(name, geometry, material)
+	Missile::Missile(const std::string name, const Resource *geometry, const Resource *material, const Resource *texture, const Resource *):SceneNode(name, geometry, material)
 	{
 
 	}
@@ -51,6 +51,7 @@ namespace game {
 	*/
 	void Missile::Update()
 	{
+		/*
 		if (targetList->size() > 0) {
 
 			std::vector<AandT*>::iterator it;
@@ -70,8 +71,9 @@ namespace game {
 				nearestTarget->SetShouldBeDestoried(true);
 			}
 		}
-		
+		*/
 		SceneNode::UpdateNodeInfo();
+
 	}
 	
 

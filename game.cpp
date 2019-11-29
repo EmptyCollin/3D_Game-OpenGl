@@ -166,6 +166,9 @@ namespace game {
 
 		filename = std::string(MATERIAL_DIRECTORY) + std::string("/common_texture_material");
 		resman_.LoadResource(Material, "c_t_material", filename.c_str());
+
+
+		resman_.CreateCylinder ("Cylinder");
 	}
 
 
@@ -236,16 +239,11 @@ namespace game {
 		Body->Translate(glm::vec3(0.0, 0.0, 0.3));
 		Body->Rotate(glm::angleAxis(glm::pi<float>() / 2.0f, glm::vec3(1, 0, 0)));
 		Body->Rotate(glm::angleAxis(glm::pi<float>() , glm::vec3(0, 0, 1)));
-		//Body->SetParent(camera_);
-		scene_.AddNode(Body);
-
-
-
+		Body->SetParent(camera_);
+			   
 		Common *Head = CreateCommonInstance("Head", "Bird_head", "TexturedMaterial", "White");
 		Head->Scale(glm::vec3(1.0, 1.0, 1.0));
 		Head->Translate(glm::vec3(0.30, 0.9, 0.0));
-		scene_.AddNode(Head);
-
 
 		Common *LWing = CreateCommonInstance("LWing", "Bird_wings", "TexturedMaterial", "White");
 		LWing->Scale(glm::vec3(1.0, 1.0, 1.0));
@@ -254,43 +252,34 @@ namespace game {
 		glm::quat rotation_LWing2 = glm::angleAxis(180 * glm::pi<float>() / 180.0f, glm::vec3(0.0, 1.0, 0.0));
 		LWing->Rotate(rotation_LWing2);
 		LWing->Translate(glm::vec3(0.5, 0.3, 0.0));
-		scene_.AddNode(LWing);
 
 		Common *LWing_tip = CreateCommonInstance("LWing_tip", "Bird_wings_tip", "TexturedMaterial", "White");
 		LWing_tip->Scale(glm::vec3(1.0, 1.0, 1.0));
 		LWing_tip->Translate(glm::vec3(0.16, 0.8, 0.0));
-		scene_.AddNode(LWing_tip);
-
 
 		Common *RWing = CreateCommonInstance("RWing", "Bird_wings", "TexturedMaterial", "White");
 		RWing->Scale(glm::vec3(1.0, 1.0, 1.0));
 		glm::quat rotation_RWing = glm::angleAxis(-90 * -glm::pi<float>() / 180.0f, glm::vec3(0.0, 0.0, 1.0));
 		RWing->Rotate(rotation_RWing);
 		RWing->Translate(glm::vec3(-0.5, 0.3, 0.0));
-		scene_.AddNode(RWing);
 
 		Common *RWing_tip = CreateCommonInstance("LWing_tip", "Bird_wings_tip", "TexturedMaterial", "White");
 		RWing_tip->Scale(glm::vec3(1.0, 1.0, 1.0));
 		glm::quat rotation_RWing_Tip = glm::angleAxis(180 * -glm::pi<float>() / 180.0f, glm::vec3(1.0, 0.0, 0.0));
 		RWing_tip->Rotate(rotation_RWing_Tip);
 		RWing_tip->Translate(glm::vec3(0.16, -1.82, 0.0));
-		scene_.AddNode(RWing_tip);
-
 
 		Common *Beak = CreateCommonInstance("Beak", "Bird_beak", "TexturedMaterial", "White");
 		Beak->Scale(glm::vec3(1.0, 1.0, 1.0));
 		glm::quat rotation_Beak = glm::angleAxis(-90 * glm::pi<float>() / 180.0f, glm::vec3(0.0, 1.0, 0.0));
 		Beak->Rotate(rotation_Beak);
 		Beak->Translate(glm::vec3(0.0, 1.16, 0.37));
-		scene_.AddNode(Beak);
-
 
 		Common *Tail = CreateCommonInstance("Tail", "Bird_tail", "TexturedMaterial", "White");
 		Tail->Scale(glm::vec3(1.0, 1.0, 1.0));
 		glm::quat rotation_Tail = glm::angleAxis(12 * glm::pi<float>() / 180.0f, glm::vec3(1.0, 0.0, 0.0));
 		Tail->Rotate(rotation_Tail);
 		Tail->Translate(glm::vec3(0.0, -0.7, -0.1));
-		scene_.AddNode(Tail);
 
 		Head->SetParent(Body);
 		LWing->SetParent(Body);
@@ -308,12 +297,12 @@ namespace game {
 
 		Camera* camera = new Camera();
 		// Set current view
-		camera->SetView(camera_position_g+glm::vec3(-1,3,5), camera_->GetPosition(), camera_->GetCamera()->GetUp());
+		camera->SetView(camera_position_g+glm::vec3(-2,6,10), camera_->GetPosition(), glm::normalize(glm::vec3(0,1,0)));
 		// Set projection
 		camera->SetProjection(camera_fov_g, camera_near_clip_distance_g, camera_far_clip_distance_g, width, height);
 
 		CameraNode* thirdCamera = new CameraNode(camera, "ThirdCamera");
-		scene_.AddNode(thirdCamera);
+		thirdCamera->SetParent(Body);
 
 	}
 
@@ -482,22 +471,23 @@ namespace game {
 	
 	void Game::CreateMissile()
 	{
-		/*
-		Missile* missile = CreateComInstance("Missile", "SimpleCylinder", "ObjectMaterial");
+		
+		Missile* missile = CreateMissileInstance("Missile", "Cylinder", "ObjectMaterial");
 		missile->SetRenderState(false);
-		missile->SetLifeTime(0.5);
+		missile->SetLifeTime(1.0);
 		missile->SetScale(glm::vec3(0.05, 1, 0.05));
 		CameraNode* cNode = (CameraNode*)scene_.GetNode("Camera");
-		missile->SetPosition(cNode->GetCamera()->GetPosition() + cNode->GetCamera()->GetForward());
+		missile->SetPosition(cNode->GetCamera()->GetPosition() + 0.2f*cNode->GetCamera()->GetForward());
 		missile->SetOrientation(cNode->GetCamera()->GetOrientation());
 		missile->Rotate(glm::normalize(glm::angleAxis(-(float)glm::pi<float>() / 2, glm::vec3(1, 0, 0))));
 		missile->SetForward(glm::vec3(0, 1, 0));
-		missile->SetMaxSpeed(3);
-		missile->SetSpeed(cNode->GetSpeed() + 1);
+		missile->SetMaxSpeed(1);
+		missile->SetSpeed(cNode->GetSpeed() + 0.2);
+		missile->SetFictionFactor(0);
 		//missile->selectTarget(scene_.GetNodeList());
 
 		scene_.AddNode(missile);
-		*/
+		
 	}
 
 	ResourceSet Game::CollectSource(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
@@ -544,6 +534,12 @@ namespace game {
 	Common* Game::CreateCommonInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
 		ResourceSet theSet = CollectSource(entity_name, object_name, material_name, texture_name, envmap_name);
 		Common *scn = new Common(entity_name, theSet.g, theSet.m, theSet.t, theSet.e);
+		return scn;
+	}
+
+	Missile* Game::CreateMissileInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name, std::string envmap_name) {
+		ResourceSet theSet = CollectSource(entity_name, object_name, material_name, texture_name, envmap_name);
+		Missile *scn = new Missile(entity_name, theSet.g, theSet.m, theSet.t, theSet.e);
 		return scn;
 	}
 

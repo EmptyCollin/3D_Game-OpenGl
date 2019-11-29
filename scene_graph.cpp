@@ -55,7 +55,13 @@ SceneNode* SceneGraph::GetNode(std::string node_name){
     for (int i = 0; i < hieNodeList.size(); i++){
 		if (hieNodeList[i]->GetName() == node_name) {
 				return hieNodeList[i];
+		}
+		else if(hieNodeList[i]->GetChildren()->size()>0){
+			SceneNode* r = hieNodeList[i]->FindIt(node_name);
+			if (r != NULL) {
+				return r;
 			}
+		}
     }
 	std::cout << node_name << " not found" << std::endl;
     return NULL;
@@ -82,30 +88,12 @@ void SceneGraph::Draw(Camera *camera){
                  background_color_[1],
                  background_color_[2], 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	/*
+	
 	for (int i = 0; i < hieNodeList.size(); i++) {
-		hieNodeList[i]->Draw(camera);
-	}
-	*/
 
-    // Draw all scene nodes
-	bool thirdview = camera->GetCameraName() == "ThirdCamera" ? true : false;
-	if (thirdview) {
-		for (int i = 0; i < hieNodeList.size(); i++) {
-			hieNodeList[i]->Draw(camera);
-		}
+		if (hieNodeList[i]->GetName() == "Camera" && camera->GetCameraName() == "Camera") continue;
+		else hieNodeList[i]->Draw(camera);
 	}
-	else {
-		for (int i = 0; i < hieNodeList.size(); i++) {
-			if (hieNodeList[i]->GetName() == "Body" || hieNodeList[i]->GetName() == "Head" || hieNodeList[i]->GetName() == "Beak" || 
-				hieNodeList[i]->GetName() == "LWing" || hieNodeList[i]->GetName() == "LWing_tip" ||
-				hieNodeList[i]->GetName() == "RWing" || hieNodeList[i]->GetName() == "RWing_tip") {
-				continue;
-			}
-			hieNodeList[i]->Draw(camera);
-		}
-	}
-
 
 }
 

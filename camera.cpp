@@ -144,26 +144,13 @@ void Camera::SetupShader(GLuint program){
 	glUniform3fv(position_vec, 1, glm::value_ptr(position_));
 }
 
-void Camera::ChangeView(int v)
-{
-	view = v;
-
-	if (view == 1) {
-		offset = glm::vec3(0);
-	}
-	else {
-		offset = (float)9 * (orientation_ * forward_) +
-			(float)6 * (orientation_ * glm::normalize(glm::cross(orientation_ * forward_, orientation_ * side_))) - 
-			(float)3 * (orientation_ * side_);
-	}
-
-}
 
 
 void Camera::SetupViewMatrix(void){
 	
-	//view_matrix_ = glm::lookAt(position, look_at, up);
+	view_matrix_ = glm::lookAt(position_, look_at, GetUp());
 
+	/*
    // Get current vectors of coordinate system
    // [side, up, forward]
    // See slide in "Camera control" for details
@@ -195,6 +182,7 @@ void Camera::SetupViewMatrix(void){
 
 	// Combine translation and view matrix in proper order
 	view_matrix_ *= trans;
+	*/
 }
 
 } // namespace game

@@ -8,4 +8,10 @@ game::SkyBox::SkyBox(const std::string name, const Resource * geometry, const Re
 void game::SkyBox::Update(void)
 {
 	SceneNode::UpdateNodeInfo();
+
+	if (children->size() > 0) {
+		for (int i = 0; i < children->size(); i++) {
+			(*children)[i]->Update();
+		}
+	}
 }

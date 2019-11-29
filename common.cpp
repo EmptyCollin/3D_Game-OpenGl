@@ -28,6 +28,12 @@ void Common::Update(void){
 	Translate(offset* transRange *transAxis);
 
 	SceneNode::UpdateNodeInfo();
+
+	if (children->size() > 0) {
+		for (int i = 0; i < children->size(); i++) {
+			(*children)[i]->Update();
+		}
+	}
 }
             
 } // namespace game

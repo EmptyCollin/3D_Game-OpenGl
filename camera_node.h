@@ -26,10 +26,9 @@ namespace game {
 		virtual void SetPosition(glm::vec3 position);
 		virtual void SetOrientation(glm::quat orientation);
 
-		virtual void Draw(Camera *camera) {};
+		virtual void Draw(Camera *camera);
 		virtual void Update(void);
 
-		void ChangeView(int view);
 
 	private:
 		Camera* camera;

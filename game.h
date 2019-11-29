@@ -86,6 +86,8 @@ namespace game {
 		SkyBox * CreateSkyBoxInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name = std::string(""), std::string envmap_name = std::string(""));
 
 		Common * CreateCommonInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name = std::string(""), std::string envmap_name = std::string(""));
+
+		Missile * CreateMissileInstance(std::string entity_name, std::string object_name, std::string material_name, std::string texture_name = std::string(""), std::string envmap_name = std::string(""));
 		
 		void SetUpCamera();
 		

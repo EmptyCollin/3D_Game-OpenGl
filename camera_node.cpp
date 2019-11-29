@@ -49,21 +49,29 @@ void game::CameraNode::SetOrientation(glm::quat orientation)
 }
 
 
+void game::CameraNode::Draw(Camera * camera)
+{
+	if (children->size() > 0) {
+		for (int i = 0; i < children->size(); i++) {
+			(*children)[i]->Draw(camera);
+		}
+	}
+}
+
 void game::CameraNode::Update(void)
 {
-
-	if (view == -1) {
-		camera->SetLookAt(position_);
+	if (GetCamera()->GetCameraName()=="ThirdCamera") {
+		camera->SetLookAt(parent->GetParent()->GetPosition());
+		position_ = parent->GetParent()->GetPosition() + glm::vec3(-2, 6, 10);
 	}
 	else { camera->SetLookAt(position_+(float)800*camera->GetForward()); }
 
 	SceneNode::UpdateNodeInfo();
 	camera->SetPosition(position_);
 	camera->SetOrientation(orientation_);
-}
-
-void game::CameraNode::ChangeView(int v)
-{
-	view = v;
-	camera->ChangeView(view);
+	if (children->size() > 0) {
+		for (int i = 0; i < children->size(); i++) {
+			(*children)[i]->Update();
+		}
+	}
 }

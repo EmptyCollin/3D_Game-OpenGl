@@ -662,11 +662,6 @@ void ResourceManager::CreateMirror(std::string object_name)
 		vertex[i*vertex_att + 10] = 0.0;
 	}
 
-
-	for (int i = 0; i < vertex_num; i++) {
-		printf("%d: %f,%f,%f\n", i, vertex[i*vertex_att + 0], vertex[i*vertex_att + i], vertex[i*vertex_att + 2]);
-	}
-
 	// Create triangles
 	for (int i = 0; i < segment_num; i++) {
 		// Two triangles per quad

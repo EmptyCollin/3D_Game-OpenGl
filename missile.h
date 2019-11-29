@@ -24,7 +24,7 @@ namespace game {
 			}
 		};
 	public:
-		Missile(const std::string name, const Resource *geometry, const Resource *material);
+		Missile(const std::string name, const Resource *geometry, const Resource *material, const Resource *textrue = NULL, const Resource *envmap = NULL);
 		~Missile() {};
 
 		//void selectTarget(std::vector<SceneNode*> nodelist);

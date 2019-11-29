@@ -58,8 +58,25 @@ namespace game {
 		// Other attributes
 		scale_ = glm::vec3(1.0, 1.0, 1.0);
 		blending_ = false;
+		children = new std::vector<SceneNode*>();
 	}
 
+
+
+	SceneNode* SceneNode::FindIt(std::string node_name) {
+		for (int i = 0; i < children->size(); i++) {
+			if ((*children)[i]->GetName() == node_name) {
+				return (*children)[i];
+			}
+			else if ((*children)[i]->GetChildren()->size() > 0) {
+				SceneNode * r = (*children)[i]->FindIt(node_name);
+				if (r != NULL) {
+					return r;
+				}
+			}
+		}
+		return NULL;
+	}
 
 SceneNode::~SceneNode(){
 }
@@ -109,6 +126,17 @@ void SceneNode::SetOrientation(glm::quat orientation){
 void SceneNode::SetScale(glm::vec3 scale){
 
     scale_ = scale;
+}
+
+void SceneNode::SetParent(SceneNode * p)
+{
+	p->AddChild(this);
+	parent = p; 
+}
+
+void SceneNode::AddChild(SceneNode * c)
+{
+	children->push_back(c);
 }
 
 
@@ -198,6 +226,12 @@ void SceneNode::Draw(Camera *camera){
 	}
 	else {
 		glDrawElements(mode_, size_, GL_UNSIGNED_INT, 0);
+	}
+
+	if (children->size() > 0) {
+		for (int i = 0; i < children->size(); i++) {
+			(*children)[i]->Draw(camera);
+		}
 	}
 }
 

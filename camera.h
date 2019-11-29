@@ -54,7 +54,6 @@ namespace game {
             void SetProjection(GLfloat fov, GLfloat near, GLfloat far, GLfloat w, GLfloat h);
             // Set all camera-related variables in shader program
             void SetupShader(GLuint program);
-			void ChangeView(int view);
 			int GetView() { return view; }
 
         private:
@@ -65,7 +64,6 @@ namespace game {
             glm::vec3 side_; // Initial side vector
             glm::mat4 view_matrix_; // View matrix
             glm::mat4 projection_matrix_; // Projection matrix
-			glm::vec3 offset = glm::vec3(0); // the camera offset
 			glm::vec3 look_at = glm::vec3(0);
             // Create view matrix from current camera parameters
             void SetupViewMatrix(void);
